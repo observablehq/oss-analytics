@@ -78,10 +78,11 @@ export default {
     </div>
     <span style="display: flex; align-items: baseline; gap: 1rem;">
       &#8203;
-      <a style="font-size: 14px;" target="_blank" href="https://github.com/observablehq/framework"><span>GitHub️</span></a>
+      <a style="font-size: 14px;" target="_blank" href="https://github.com/observablehq/oss-analytics"><span>GitHub️</span></a>
     </span>
   </div>`,
-  footer: `© ${new Date().getUTCFullYear()} Observable, Inc.`,
+  footer: ((date = new Date()) =>
+    `© ${date.getUTCFullYear()} Observable, Inc. Updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric", hour: "numeric", timeZone: "America/Los_Angeles"})} PT</a>.`)(),
   dynamicPaths: [...observableNames, ...d3Names].flatMap((name) => [
     `/${name}/downloads-dark.svg`,
     `/${name}/downloads.svg`
