@@ -100,7 +100,7 @@ export default {
   </div>`,
   footer: ((date = new Date()) =>
     `© ${date.getUTCFullYear()} Observable, Inc. Updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric", hour: "numeric", timeZone: "America/Los_Angeles"})} PT</a>.`)(),
-  dynamicPaths: packages.flatMap((name) => [
+  dynamicPaths: packages.flatMap(({name}) => [
     `/${name}/downloads-dark.svg`,
     `/${name}/downloads.svg`
   ])
