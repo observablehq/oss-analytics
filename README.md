@@ -11,9 +11,10 @@ This project collects [npm download counts](https://github.com/npm/registry/blob
 
 ## How to use for your own packages
 
-This project is [open-source](https://github.com/observablehq/oss-analytics/); fork it to build your own embeddable charts.
+This project is [open-source](https://github.com/observablehq/oss-analytics/); you can use it to build embeddable charts of your own packages.
 
-1. Edit [`observablehq.config.js`](https://github.com/observablehq/oss-analytics/blob/main/observablehq.config.js) to list your npm packages.
-2. In your [Observable workspace](https://observablehq.com), create a new data app and link it to the forked repo.
-3. In your new data app’s **Automation** tab, enable the `daily` build schedule.
-4. Tweak [`index.md.js`](https://github.com/observablehq/oss-analytics/blob/main/src/index.md.js) to personalize the page.
+1. [Fork this repository.](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
+2. Edit [`observablehq.config.js`](https://github.com/observablehq/oss-analytics/blob/main/observablehq.config.js) to list your npm packages, comitting your changes.
+3. In your [Observable workspace](https://observablehq.com), create a new data app and link it to your forked repository.
+4. In your new data app’s **Automation** tab, enable the `daily` build schedule.
+5. Tweak [`index.md.js`](https://github.com/observablehq/oss-analytics/blob/main/src/index.md.js) to personalize the page.
