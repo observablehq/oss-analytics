@@ -1,81 +1,82 @@
-const observableNames = [
-  "@observablehq/framework",
-  "@observablehq/plot",
-  "@observablehq/inputs",
-  "@observablehq/runtime",
-  "@observablehq/stdlib",
-  "@observablehq/inspector",
-  "@observablehq/parser",
-  "htl"
-];
-
-const d3Names = [
-  "d3",
-  "d3-array",
-  "d3-axis",
-  "d3-brush",
-  "d3-chord",
-  "d3-collection",
-  "d3-color",
-  "d3-contour",
-  "d3-delaunay",
-  "d3-dispatch",
-  "d3-drag",
-  "d3-dsv",
-  "d3-ease",
-  "d3-fetch",
-  "d3-force",
-  "d3-format",
-  "d3-geo",
-  "d3-geo-polygon",
-  "d3-geo-projection",
-  "d3-hexbin",
-  "d3-hierarchy",
-  "d3-hsv",
-  "d3-interpolate",
-  "d3-path",
-  "d3-polygon",
-  "d3-quadtree",
-  "d3-queue",
-  "d3-random",
-  "d3-request",
-  "d3-require",
-  "d3-sankey",
-  "d3-scale",
-  "d3-scale-chromatic",
-  "d3-selection",
-  "d3-selection-multi",
-  "d3-shape",
-  "d3-tile",
-  "d3-time",
-  "d3-time-format",
-  "d3-timer",
-  "d3-transition",
-  "d3-voronoi",
-  "d3-zoom"
-];
-
 export const packages = [
-  ...observableNames.map((name) => ({
+  ...[
+    "@observablehq/framework",
+    "@observablehq/plot",
+    "@observablehq/inputs",
+    "@observablehq/runtime",
+    "@observablehq/stdlib",
+    "@observablehq/inspector",
+    "@observablehq/parser",
+    "htl"
+  ].map((name) => ({
     name,
     group: "Observable",
     href:
       name === "htl"
         ? "https://github.com/observablehq/htl"
-        : `https://github.com/${name.replace(/^@/, "")}`,
+        : `https://github.com/${name.replace(/^@/, "")}`
   })),
-  ...d3Names.map((name) => ({
+  ...[
+    "d3",
+    "d3-array",
+    "d3-axis",
+    "d3-brush",
+    "d3-chord",
+    "d3-color",
+    "d3-contour",
+    "d3-delaunay",
+    "d3-dispatch",
+    "d3-drag",
+    "d3-dsv",
+    "d3-ease",
+    "d3-fetch",
+    "d3-force",
+    "d3-format",
+    "d3-geo",
+    "d3-hierarchy",
+    "d3-interpolate",
+    "d3-path",
+    "d3-polygon",
+    "d3-quadtree",
+    "d3-random",
+    "d3-scale",
+    "d3-scale-chromatic",
+    "d3-selection",
+    "d3-shape",
+    "d3-time",
+    "d3-time-format",
+    "d3-timer",
+    "d3-transition",
+    "d3-zoom"
+  ].map((name) => ({
     name,
-    group: "D3",
-    href: `https://github.com/d3/${name}`,
+    group: "D3 (core)",
+    href: `https://github.com/d3/${name}`
   })),
+  ...[
+    "d3-collection",
+    "d3-geo-polygon",
+    "d3-geo-projection",
+    "d3-hexbin",
+    "d3-hsv",
+    "d3-queue",
+    "d3-request",
+    "d3-require",
+    "d3-sankey",
+    "d3-selection-multi",
+    "d3-tile",
+    "d3-voronoi"
+  ].map((name) => ({
+    name,
+    group: "D3 (non-core)",
+    href: `https://github.com/d3/${name}`
+  }))
 ];
 
 export default {
   title: "Open-source analytics",
   head: '<link rel="icon" href="observable.png" type="image/png" sizes="32x32">',
   root: "src",
-  // theme: ["dashboard"],
   style: "style.css",
   globalStylesheets: [
     "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap"

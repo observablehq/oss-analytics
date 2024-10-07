@@ -1,8 +1,8 @@
 import {packages} from "../observablehq.config.js";
 import {groups} from "d3";
 
-function preview({name, href})  {
-  return `<div class="card" style="margin: 0;">
+function preview({name, href}) {
+  return `<div class="card">
     <h2>Daily downloads of <a href=${href}>${name}</a></h2>
     <a href=${href}>
       <picture>
@@ -31,13 +31,17 @@ This project collects [npm download counts](https://github.com/npm/registry/blob
   }
 }
 
+.wide-grid .card {
+  margin: 0;
+}
+
 </style>
 
----
+${groups(packages, ({group}) => group).map(([group, packages]) => `---
 
-${groups(packages, ({group}) => group)
-.map(([group, packages]) => `## ${group}
-  <div class="wide-grid">
-    ${packages.map(preview).join("\n")}
-  </div>`).join("\n\n")}
+## ${group}
+
+<div class="wide-grid">
+  ${packages.map(preview).join("\n  ")}
+</div>`).join("\n\n")}
 `);
