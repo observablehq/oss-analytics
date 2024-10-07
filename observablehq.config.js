@@ -1,4 +1,4 @@
-export const observableNames = [
+const observableNames = [
   "@observablehq/framework",
   "@observablehq/plot",
   "@observablehq/inputs",
@@ -9,7 +9,7 @@ export const observableNames = [
   "htl"
 ];
 
-export const d3Names = [
+const d3Names = [
   "d3",
   "d3-array",
   "d3-axis",
@@ -55,6 +55,22 @@ export const d3Names = [
   "d3-zoom"
 ];
 
+export const packages = [
+  ...observableNames.map((name) => ({
+    name,
+    group: "Observable",
+    href:
+      name === "htl"
+        ? "https://github.com/observablehq/htl"
+        : `https://github.com/${name.replace(/^@/, "")}`,
+  })),
+  ...d3Names.map((name) => ({
+    name,
+    group: "D3",
+    href: `https://github.com/d3/${name}`,
+  })),
+];
+
 export default {
   title: "Open-source analytics",
   head: '<link rel="icon" href="observable.png" type="image/png" sizes="32x32">',
@@ -83,7 +99,7 @@ export default {
   </div>`,
   footer: ((date = new Date()) =>
     `© ${date.getUTCFullYear()} Observable, Inc. Updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric", hour: "numeric", timeZone: "America/Los_Angeles"})} PT</a>.`)(),
-  dynamicPaths: [...observableNames, ...d3Names].flatMap((name) => [
+  dynamicPaths: packages.flatMap((name) => [
     `/${name}/downloads-dark.svg`,
     `/${name}/downloads.svg`
   ])

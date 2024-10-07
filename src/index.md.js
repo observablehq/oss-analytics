@@ -1,23 +1,13 @@
-import {observableNames, d3Names} from "../observablehq.config.js";
+import {packages} from "../observablehq.config.js";
+import {groups} from "d3";
 
-const repoMap = new Map([
-  ...d3Names.map((name) => [name, `https://github.com/d3/${name}`]),
-  ...observableNames.map((name) => [name, `https://github.com/${name.replace(/^@/, "")}`]),
-  ["htl", "https://github.com/observablehq/htl"]
-]);
-
-function getRepo(name) {
-  if (!repoMap.has(name)) throw new Error(`unknown repo: ${name}`);
-  return repoMap.get(name);
-}
-
-function preview(name) {
+function preview({name, href})  {
   return `<div class="card" style="margin: 0;">
-    <h2>Daily downloads of <a href=${getRepo(name)}>${name}</a></h2>
-    <a href=${getRepo(name)}>
+    <h2>Daily downloads of <a href=${href}>${name}</a></h2>
+    <a href=${href}>
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="/${name}/downloads-dark.svg">
-        <img style="width: 100%;" alt="Daily downloads of Observable Plot" src="/${name}/downloads.svg">
+        <img style="width: 100%;" alt="Daily downloads of ${name}" src="/${name}/downloads.svg">
       </picture>
     </a>
   </div>`;
@@ -45,17 +35,9 @@ This project collects [npm download counts](https://github.com/npm/registry/blob
 
 ---
 
-## Observable
-
-<div class="wide-grid">
-  ${observableNames.map(preview).join("\n")}
-</div>
-
----
-
-## D3
-
-<div class="wide-grid">
-  ${d3Names.map(preview).join("\n")}
-</div>
+${groups(packages, ({group}) => group)
+.map(([group, packages]) => `## ${group}
+  <div class="wide-grid">
+    ${packages.map(preview).join("\n")}
+  </div>`).join("\n\n")}
 `);
