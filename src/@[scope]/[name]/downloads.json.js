@@ -1,6 +1,6 @@
 import {parseArgs} from "node:util";
+import {format as formatIso} from "isoformat";
 import {getNpmDownloadsByDate} from "../../npm.js";
-import {DailyPlot} from "../../DailyPlot.js";
 
 const {
   values: {scope, name}
@@ -10,4 +10,8 @@ const {
 
 const data = await getNpmDownloadsByDate(`@${scope}/${name}`);
 
-process.stdout.write(DailyPlot(data).outerHTML);
+process.stdout.write(JSON.stringify(data, replacer));
+
+function replacer(key, value) {
+  return value && /(_|^)(date|time)$/.test(key) ? formatIso(new Date(value)) : value;
+}

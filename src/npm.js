@@ -3,7 +3,19 @@ import {utcFormat} from "d3-time-format";
 
 const formatDate = utcFormat("%Y-%m-%d");
 
-export async function getNpmDownloads(
+export async function getNpmPackage(name) {
+  const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
+  if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
+  return await response.json();
+}
+
+export async function getNpmDownloadsByVersion(name) {
+  const response = await fetch(`https://api.npmjs.org/versions/${encodeURIComponent(name)}/last-week`);
+  if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
+  return await response.json();
+}
+
+export async function getNpmDownloadsByDate(
   name,
   {
     start = new Date("2021-01-01"),
