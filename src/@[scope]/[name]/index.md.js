@@ -192,11 +192,11 @@ Plot.plot({
   aspectRatio: 1,
   padding: 0,
   x: {axis: null},
-  y: {tickFormat: Plot.formatWeekday()},
+  y: {domain: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
   color: {type: "log", label: "commits", domain: [0.5, 20], range: ["black", "green"]},
   marks: [
-    Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcWeek.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
-    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcWeek.count(0, d.date), y: (d) => d.date.getUTCDay(), r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
+    Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
+    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
   ]
 })
 ~~~
