@@ -101,7 +101,8 @@ ${githubInfo.description}
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
-const domain = [d3.utcDay(commits.at(-1).date), new Date("${formatIso(today)}")];
+const today = new Date("${formatIso(today)}");
+const domain = [d3.utcDay(commits.at(-1).date), today];
 
 function reviver(key, value) {
   return typeof value === "string" && /(^|_)(date|time)$/.test(key) ? new Date(value) : value;
@@ -175,6 +176,56 @@ Plot.plot({
 
 <div class="grid grid-cols-1">
   <div class="card">
+    <h2>Commits calendar</h2>
+
+~~~js
+const calendarStart = d3.utcYear.offset(today, -1);
+~~~
+
+~~~js
+Plot.plot({
+  width,
+  label: null,
+  round: false,
+  marginTop: 0,
+  marginBottom: 0,
+  aspectRatio: 1,
+  padding: 0,
+  x: {axis: null},
+  y: {tickFormat: Plot.formatWeekday()},
+  color: {type: "log", label: "commits", domain: [0.5, 20], range: ["black", "green"]},
+  marks: [
+    Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcWeek.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
+    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcWeek.count(0, d.date), y: (d) => d.date.getUTCDay(), r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
+  ]
+})
+~~~
+
+~~~js
+class MonthLine extends Plot.Mark {
+  static defaults = {stroke: "currentColor", strokeWidth: 1};
+  constructor(data, options = {}) {
+    const {x, y} = options;
+    super(data, {x: {value: x, scale: "x"}, y: {value: y, scale: "y"}}, options, MonthLine.defaults);
+  }
+  render(index, {x, y}, {x: X, y: Y}, dimensions) {
+    const {marginTop, marginBottom, height} = dimensions;
+    const dx = x.bandwidth(), dy = y.bandwidth();
+    return htl.svg\`<path fill=none stroke=$\{this.stroke} stroke-width=$\{this.strokeWidth} d=$\{
+      Array.from(index, (i) => \`$\{Y[i] > marginTop + dy * 1.5 // is the first day a Monday?
+          ? \`M$\{X[i] + dx},$\{marginTop}V$\{Y[i]}h$\{-dx}\`
+          : \`M$\{X[i]},$\{marginTop}\`}V$\{height - marginBottom}\`)
+        .join("")
+    }>\`;
+  }
+}
+~~~
+
+  </div>
+</div>
+
+<div class="grid grid-cols-1">
+  <div class="card">
     <h2>Commits by author</h2>
     <h3>Top 10 authors</h3>
 
@@ -215,7 +266,10 @@ TODO
 - github issue burndown chart
 - github top issues
 - github commits by author timeline chart ☑️
-- github commits calendar heatmap
+- github commits calendar heatmap ☑️
+  - month line
+  - show date in tip
+  - tip for zero days
 - github top contributors
 - inline data rather than using FileAttachment ☑️
 - don’t show more than three years?
