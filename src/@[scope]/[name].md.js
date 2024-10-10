@@ -2,8 +2,8 @@ import {parseArgs} from "node:util";
 import {sum} from "d3-array";
 import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
-import {github, githubList} from "../../github.js";
-import {getNpmDownloadsByDate, getNpmDownloadsByVersion, getNpmPackage} from "../../npm.js";
+import {github, githubList} from "../github.js";
+import {getNpmDownloadsByDate, getNpmDownloadsByVersion, getNpmPackage} from "../npm.js";
 
 const {
   values: {scope, name}
@@ -192,11 +192,12 @@ Plot.plot({
   aspectRatio: 1,
   padding: 0,
   x: {axis: null},
-  y: {domain: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
-  color: {type: "log", label: "commits", domain: [0.5, 20], range: ["black", "green"]},
+  y: {domain: [-1, 1, 2, 3, 4, 5, 6, 0], ticks: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
+  color: {type: "log", label: "commits", domain: [0.2, 20], interpolate: "hcl", range: dark ? [d3.hcl(160, 40, 0), d3.hcl(140, 80, 80)] : ["white", d3.hcl(140, 70, 40)]},
   marks: [
     Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
-    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
+    Plot.text(d3.utcMondays(d3.utcMonday(calendarStart), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
+    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
   ]
 })
 ~~~
@@ -267,8 +268,8 @@ TODO
 - github top issues
 - github commits by author timeline chart ☑️
 - github commits calendar heatmap ☑️
-  - month line
-  - show date in tip
+  - ~~month line~~ ☑️
+  - show date in tip ☑️
   - tip for zero days
 - github top contributors
 - inline data rather than using FileAttachment ☑️

@@ -2,7 +2,7 @@ import {packages} from "../observablehq.config.js";
 import {groups} from "d3";
 
 function preview({name, href}) {
-  return `<a class="card" href=${`/${name}/`}>
+  return `<a class="card" href=${`/${name}`}>
     <h2>Daily downloads of ${name}</h2>
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="/${name}/downloads-dark.svg">
