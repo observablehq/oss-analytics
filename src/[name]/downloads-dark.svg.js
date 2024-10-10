@@ -1,5 +1,5 @@
 import {parseArgs} from "node:util";
-import {getNpmDownloads} from "../npm.js";
+import {getNpmDownloadsByDate} from "../npm.js";
 import {DailyPlot} from "../DailyPlot.js";
 
 const {
@@ -8,6 +8,6 @@ const {
   options: {name: {type: "string"}}
 });
 
-const data = await getNpmDownloads(name);
+const data = await getNpmDownloadsByDate(name);
 
 process.stdout.write(DailyPlot(data, {foreground: "white", background: "black"}).outerHTML);
