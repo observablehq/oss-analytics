@@ -1,20 +1,19 @@
+import {full as MarkdownItEmoji} from "markdown-it-emoji";
+
 export const packages = [
   ...[
-    "@observablehq/framework",
-    "@observablehq/plot",
-    "@observablehq/inputs",
-    "@observablehq/runtime",
-    "@observablehq/stdlib",
-    "@observablehq/inspector",
-    "@observablehq/parser",
+    "framework",
+    "plot",
+    "inputs",
+    "runtime",
+    "stdlib",
+    "inspector",
+    "parser",
     "htl"
   ].map((name) => ({
-    name,
-    group: "Observable",
-    href:
-      name === "htl"
-        ? "https://github.com/observablehq/htl"
-        : `https://github.com/${name.replace(/^@/, "")}`
+    name: name === "htl" ? name : `@observablehq/${name}`,
+    repo: `observablehq/${name}`,
+    group: "Observable"
   })),
   ...[
     "d3",
@@ -50,8 +49,8 @@ export const packages = [
     "d3-zoom"
   ].map((name) => ({
     name,
-    group: "D3 (core)",
-    href: `https://github.com/d3/${name}`
+    repo: `d3/${name}`,
+    group: "D3 (core)"
   })),
   ...[
     "d3-collection",
@@ -68,8 +67,8 @@ export const packages = [
     "d3-voronoi"
   ].map((name) => ({
     name,
-    group: "D3 (non-core)",
-    href: `https://github.com/d3/${name}`
+    repo: `d3/${name}`,
+    group: "D3 (non-core)"
   }))
 ];
 
@@ -78,6 +77,7 @@ export default {
   head: '<link rel="icon" href="observable.png" type="image/png" sizes="32x32">',
   root: "src",
   style: "style.css",
+  markdownIt: (md) => md.use(MarkdownItEmoji),
   globalStylesheets: [
     "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap"
   ],
@@ -99,7 +99,7 @@ export default {
     </span>
   </div>`,
   footer: ((date = new Date()) =>
-    `© ${date.getUTCFullYear()} Observable, Inc. Updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric", hour: "numeric", timeZone: "America/Los_Angeles"})} PT</a>.`)(),
+    `© ${date.getUTCFullYear()} Observable, Inc. Last updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric"})}</a>.`)(),
   dynamicPaths: packages.flatMap(({name}) => [
     `/${name}/downloads-dark.svg`,
     `/${name}/downloads.svg`

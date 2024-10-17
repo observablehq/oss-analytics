@@ -1,27 +1,14 @@
-import {timeDay, utcDay} from "d3-time";
-import {utcFormat} from "d3-time-format";
+import {utcDay} from "d3-time";
+import {format as formatIso} from "isoformat";
 
-const formatDate = utcFormat("%Y-%m-%d");
-
-export async function getNpmPackage(name) {
-  const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
+export async function fetchNpm(path) {
+  const url = new URL(path, "https://api.npmjs.org");
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
   return await response.json();
 }
 
-export async function getNpmDownloadsByVersion(name) {
-  const response = await fetch(`https://api.npmjs.org/versions/${encodeURIComponent(name)}/last-week`);
-  if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
-  return await response.json();
-}
-
-export async function getNpmDownloadsByDate(
-  name,
-  {
-    start = new Date("2021-01-01"),
-    end = utcDay(timeDay()) // exclusive
-  } = {}
-) {
+export async function fetchNpmDownloads(name, start, end) {
   const data = [];
   let batchStart = end;
   let batchEnd;
@@ -29,13 +16,9 @@ export async function getNpmDownloadsByDate(
     batchEnd = batchStart;
     batchStart = utcDay.offset(batchStart, -365);
     if (batchStart < start) batchStart = start;
-    const response = await fetch(
-      `https://api.npmjs.org/downloads/range/${formatDate(batchStart)}:${formatDate(
-        utcDay.offset(batchEnd, -1)
-      )}/${name}`
-    );
-    if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
-    const batch = await response.json();
+    const formatStart = formatIso(batchStart);
+    const formatEnd = formatIso(utcDay.offset(batchEnd, -1)); // inclusive end
+    const batch = await fetchNpm(`/downloads/range/${formatStart}:${formatEnd}/${name}`);
     for (const {downloads: value, day: date} of batch.downloads.reverse()) {
       data.push({date: new Date(date), value});
     }

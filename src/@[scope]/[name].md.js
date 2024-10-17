@@ -2,8 +2,8 @@ import {parseArgs} from "node:util";
 import {sum} from "d3-array";
 import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
-import {github, githubList} from "../github.js";
-import {getNpmDownloadsByDate, getNpmDownloadsByVersion, getNpmPackage} from "../npm.js";
+import {fetchGithub, listGithub} from "../github.js";
+import {fetchNpm, fetchNpmDownloads} from "../npm.js";
 
 const {
   values: {scope, name}
@@ -11,29 +11,59 @@ const {
   options: {scope: {type: "string"}, name: {type: "string"}}
 });
 
-// TODO This assumes that the GitHub repo name corresponds to the npm package
-// name (and scope), but that isn’t guaranteed. We could either create a set of
-// manual overrides here (e.g., for htl), or we could fetch the package.json
-// from the GitHub repo and find the corresponding npm package name.
-
 const today = utcDay();
+const lastWeek = utcDay.offset(today, -7);
 
-const [{body: githubInfo}, npmInfo, downloads, downloadsByVersion] = await Promise.all([
-  github(`/repos/${scope}/${name}`),
-  getNpmPackage(`@${scope}/${name}`),
-  getNpmDownloadsByDate(`@${scope}/${name}`),
-  getNpmDownloadsByVersion(`@${scope}/${name}`)
+const githubRepo = `${scope}/${name}`;
+
+const [githubInfo, githubPackage] = await Promise.all([
+  fetchGithub(`/repos/${encodeURI(githubRepo)}`),
+  fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`)
 ]);
+
+const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
+
+const [npmInfo, npmDownloads, npmDownloadsByVersion] = await Promise.all([
+  fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`),
+  fetchNpmDownloads(npmPackage, new Date("2021-01-01"), today),
+  fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`)
+]);
+
+const downloads = npmDownloads;
+const downloadsByVersion = npmDownloadsByVersion.downloads;
 
 const commits = [];
 
-for await (const commit of githubList(`/repos/${scope}/${name}/commits`, {reverse: false})) {
+for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: false})) {
   commits.push({
-    sha: commit.sha,
-    message: truncate(commit.commit.message),
-    date: commit.commit.committer.date,
-    author: commit.author?.login
+    sha: item.sha,
+    message: truncate(item.commit.message),
+    date: new Date(item.commit.committer.date),
+    author: item.author?.login
   });
+}
+
+const issues = [];
+const pullRequests = [];
+
+for await (const item of listGithub(`/repos/${githubRepo}/issues?state=all`, {reverse: false})) {
+  (item.pull_request ? pullRequests : issues).push({
+    state: item.state,
+    created_at: new Date(item.created_at),
+    closed_at: item.closed_at && new Date(item.closed_at),
+    draft: item.draft,
+    reactions: {...item.reactions, url: undefined},
+    title: item.title,
+    number: item.number
+  });
+}
+
+let recentStargazerCount = 0;
+
+for await (const item of listGithub(`/repos/${githubRepo}/stargazers`, {accept: "application/vnd.github.star+json"})) {
+  const starred_at = new Date(item.starred_at);
+  if (starred_at < lastWeek) break;
+  ++recentStargazerCount;
 }
 
 const versions = [];
@@ -43,7 +73,7 @@ for (const version in npmInfo.versions) {
   versions.push({
     version,
     date: npmInfo.time[version] ? new Date(npmInfo.time[version]) : undefined,
-    downloads: downloadsByVersion.downloads[version]
+    downloads: downloadsByVersion[version]
   });
 }
 
@@ -62,38 +92,13 @@ function isPrerelease(version) {
   return /-/.test(version);
 }
 
-process.stdout.write(`# [@${scope}/${name}](https://github.com/${scope}/${name})
+const weeklyDownloadsCount = sum(downloads.slice(0, 7), (d) => d.value);
+const lastWeeklyDownloadsCount = sum(downloads.slice(7, 14), (d) => d.value);
+const weeklyDownloadsChange = (weeklyDownloadsCount - lastWeeklyDownloadsCount) / lastWeeklyDownloadsCount;
+
+process.stdout.write(`# [@${githubRepo}](https://github.com/${githubRepo})
 
 ${githubInfo.description}
-
----
-
-<div class="grid grid-cols-4">
-  <a href=https://github.com/${scope}/${name}/stargazers class="card">
-    <h2>GitHub stars</h2>
-    <div class="big">${githubInfo.stargazers_count.toLocaleString("en-US")}</div>
-  </a>
-  <a href=https://github.com/${scope}/${name}/issues class="card">
-    <h2>GitHub open issues & PRs</h2>
-    <div class="big">${githubInfo.open_issues_count.toLocaleString("en-US")}</div>
-  </a>
-  <a href=https://github.com/${scope}/${name}/releases class="card">
-    <h2>Latest release</h2>
-    <div class="big">${npmInfo["dist-tags"].latest}</div>
-  </a>
-  <a href=https://github.com/${scope}/${name}/releases class="card">
-    <h2>Days since last release</h2>
-    <div class="big">${utcDay.count(new Date(npmInfo.time[npmInfo["dist-tags"].latest]), today)}</div>
-  </a>
-  <a href=https://github.com/${scope}/${name}/commits class="card">
-    <h2>Days since last commit</h2>
-    <div class="big">${utcDay.count(new Date(commits[0].date), today)}</div>
-  </a>
-  <a class="card">
-    <h2>npm downloads (last 7 days)</h2>
-    <div class="big">${sum(downloads.slice(0, 7), (d) => d.value).toLocaleString("en-US")}</div>
-  </a>
-</div>
 
 ---
 
@@ -101,40 +106,63 @@ ${githubInfo.description}
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
+const start = d3.greatest([new Date("2021-01-01"), d3.utcDay(commits.at(-1).date)]);
 const today = new Date("${formatIso(today)}");
-const domain = [d3.utcDay(commits.at(-1).date), today];
+const domain = [start, today];
 
 function reviver(key, value) {
   return typeof value === "string" && /(^|_)(date|time)$/.test(key) ? new Date(value) : value;
 }
 ~~~
 
+<div class="grid grid-cols-4">
+  <a href=https://github.com/${githubRepo}/stargazers class="card">
+    <div style="display: flex; flex-direction: column;">
+      <h2>GitHub stars</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
+        <div class="big">${githubInfo.stargazers_count.toLocaleString("en-US")}</div>
+        <div class="green">${recentStargazerCount.toLocaleString("en-US", {signDisplay: "always"})} in 7d</div>
+      </div>
+    </div>
+  </a>
+  <a class="card">
+    <h2>Weekly downloads</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
+      <div class="big">${weeklyDownloadsCount.toLocaleString("en-US")}</div>
+      <div class="${weeklyDownloadsChange > 0 ? "green" : weeklyDownloadsChange < 0 ? "red" : "muted"}">${weeklyDownloadsChange.toLocaleString("en-US", {style: "percent", signDisplay: "always"})}</div>
+    </div>
+  </a>
+  <a href=https://github.com/${githubRepo}/releases class="card">
+    <h2>Latest release</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
+      <div class="big">${npmInfo["dist-tags"].latest}</div>
+      <div class="muted">${utcDay.count(new Date(npmInfo.time[npmInfo["dist-tags"].latest]), today).toLocaleString("en-US")} days ago</div>
+    </div>
+  </a>
+</div>
+
 <div class="grid grid-cols-1">
   <div class="card">
     <h2>Daily downloads</h2>
     <h3>28d <b style="color: var(--theme-foreground);">—</b> and 7d <b style="color: var(--theme-foreground-focus);">—</b> average</h3>
-
-~~~js
-Plot.plot({
-  width,
-  height: 400,
-  marginLeft: 0,
-  marginRight: 60,
-  x: {domain},
-  y: {label: "downloads"},
-  marks: [
-    Plot.axisY({anchor: "right", label: null}),
-    Plot.areaY(downloads, {x: "date", y: "value", fillOpacity: 0.2, curve: "step"}),
-    Plot.ruleY([0]),
-    Plot.lineY(downloads, Plot.windowY({k: 7, anchor: "start", strict: true}, {x: "date", y: "value", strokeWidth: 1, stroke: "var(--theme-foreground-focus)", curve: "step"})),
-    Plot.lineY(downloads, Plot.windowY({k: 28, anchor: "start", strict: true}, {x: "date", y: "value", stroke: "var(--theme-foreground)", curve: "step"})),
-    Plot.textX(versions, {x: "date", text: "version", href: (d) => \`https://github.com/${scope}/${name}/releases/tag/v$\{d.version\}\`, target: "_blank", rotate: -90, frameAnchor: "top-right", lineAnchor: "bottom", dx: -4}),
-    Plot.ruleX(versions, {x: "date", strokeOpacity: 0.2}),
-    Plot.tip(downloads, Plot.pointerX({x: "date", y: "value"}))
-  ]
-})
-~~~
-
+    <div style="min-height: 390px;">$\{Plot.plot({
+      width,
+      height: 400,
+      marginLeft: 0,
+      marginRight: 60,
+      x: {domain},
+      y: {label: "downloads", domain: [0, d3.quantile(downloads, 0.995, (d) => d.value)]},
+      marks: [
+        Plot.axisY({anchor: "right", label: null}),
+        Plot.areaY(downloads, {x: "date", y: "value", fillOpacity: 0.2, curve: "step"}),
+        Plot.ruleY([0]),
+        Plot.lineY(downloads, Plot.windowY({k: 7, anchor: "start", strict: true}, {x: "date", y: "value", strokeWidth: 1, stroke: "var(--theme-foreground-focus)", curve: "step"})),
+        Plot.lineY(downloads, Plot.windowY({k: 28, anchor: "start", strict: true}, {x: "date", y: "value", stroke: "var(--theme-foreground)", curve: "step"})),
+        Plot.textX(versions.filter((d) => d.date >= start), {x: "date", text: "version", href: (d) => \`https://github.com/${githubRepo}/releases/tag/v$\{d.version\}\`, target: "_blank", rotate: -90, frameAnchor: "top-right", lineAnchor: "bottom", dx: -4}),
+        Plot.ruleX(versions.filter((d) => d.date >= start), {x: "date", strokeOpacity: 0.2}),
+        Plot.tip(downloads, Plot.pointerX({x: "date", y: "value"}))
+      ]
+    })}</div>
   </div>
 </div>
 
@@ -142,86 +170,72 @@ Plot.plot({
   <div class="card">
     <h2>Downloads by version</h2>
     <h3>Last seven days; top 10 versions</h3>
-
-~~~js
-Plot.plot({
-  width,
-  label: null,
-  marginLeft: 40,
-  marginRight: 60,
-  x: {axis: "top", grid: true},
-  marks: [
-    Plot.barX(versions, {
-      y: "version",
-      x: "downloads",
-      sort: {y: "x", reverse: true, limit: 10}
-    }),
-    Plot.text(versions, {
-      y: "version",
-      x: "downloads",
-      dx: -4,
-      text: "downloads",
-      frameAnchor: "right",
-      fill: "var(--theme-background)"
-    }),
-    Plot.ruleX([0])
-  ]
-})
-~~~
-
+    <div>$\{Plot.plot({
+      width,
+      label: null,
+      marginLeft: 40,
+      marginRight: 60,
+      x: {axis: "top", grid: true},
+      marks: [
+        Plot.barX(versions.filter((d) => d.downloads > 0), {
+          y: "version",
+          x: "downloads",
+          sort: {y: "x", reverse: true, limit: 10}
+        }),
+        Plot.text(versions.filter((d) => d.downloads > 0), {
+          y: "version",
+          x: "downloads",
+          dx: -4,
+          text: "downloads",
+          frameAnchor: "right",
+          fill: "var(--theme-background)"
+        }),
+        Plot.ruleX([0])
+      ]
+    })}</div>
   </div>
 </div>
 
 ---
 
+<div class="grid grid-cols-4">
+  <a href=https://github.com/${githubRepo}/commits class="card">
+    <h2>Days since last commit</h2>
+    <div class="big">${utcDay.count(new Date(commits[0].date), today).toLocaleString("en-US")}</div>
+  </a>
+  <a href=https://github.com/${githubRepo}/issues class="card">
+    <h2>GitHub open issues</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
+      <div class="big">${issues.filter((d) => d.state === "open").length.toLocaleString("en-US")}</div>
+    </div>
+  </a>
+</div>
+
+~~~js
+const calendarStart = d3.utcDay.offset(today, -365);
+~~~
+
 <div class="grid grid-cols-1">
   <div class="card">
     <h2>Commits calendar</h2>
-
-~~~js
-const calendarStart = d3.utcYear.offset(today, -1);
-~~~
-
-~~~js
-Plot.plot({
-  width,
-  label: null,
-  round: false,
-  marginTop: 0,
-  marginBottom: 0,
-  aspectRatio: 1,
-  padding: 0,
-  x: {axis: null},
-  y: {domain: [-1, 1, 2, 3, 4, 5, 6, 0], ticks: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
-  color: {type: "log", label: "commits", domain: [0.2, 20], interpolate: "hcl", range: dark ? [d3.hcl(160, 40, 0), d3.hcl(140, 80, 80)] : ["white", d3.hcl(140, 70, 40)]},
-  marks: [
-    Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
-    Plot.text(d3.utcMondays(d3.utcMonday(calendarStart), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
-    Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
-  ]
-})
-~~~
-
-~~~js
-class MonthLine extends Plot.Mark {
-  static defaults = {stroke: "currentColor", strokeWidth: 1};
-  constructor(data, options = {}) {
-    const {x, y} = options;
-    super(data, {x: {value: x, scale: "x"}, y: {value: y, scale: "y"}}, options, MonthLine.defaults);
-  }
-  render(index, {x, y}, {x: X, y: Y}, dimensions) {
-    const {marginTop, marginBottom, height} = dimensions;
-    const dx = x.bandwidth(), dy = y.bandwidth();
-    return htl.svg\`<path fill=none stroke=$\{this.stroke} stroke-width=$\{this.strokeWidth} d=$\{
-      Array.from(index, (i) => \`$\{Y[i] > marginTop + dy * 1.5 // is the first day a Monday?
-          ? \`M$\{X[i] + dx},$\{marginTop}V$\{Y[i]}h$\{-dx}\`
-          : \`M$\{X[i]},$\{marginTop}\`}V$\{height - marginBottom}\`)
-        .join("")
-    }>\`;
-  }
-}
-~~~
-
+    <h3>Last 365 days</h3>
+    <div>$\{Plot.plot({
+      width,
+      label: null,
+      round: false,
+      marginTop: 0,
+      marginBottom: 0,
+      aspectRatio: 1,
+      padding: 0,
+      x: {axis: null},
+      y: {domain: [-1, 1, 2, 3, 4, 5, 6, 0], ticks: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
+      color: {type: "log", label: "commits", domain: [0.2, 20], interpolate: "hcl", range: dark ? [d3.hcl(160, 40, 0), d3.hcl(140, 80, 80)] : ["white", d3.hcl(140, 70, 40)]},
+      marks: [
+        Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
+        Plot.text(d3.utcMondays(d3.utcMonday(calendarStart), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
+        Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
+      ]
+    })}</div>
   </div>
 </div>
 
@@ -229,51 +243,23 @@ class MonthLine extends Plot.Mark {
   <div class="card">
     <h2>Commits by author</h2>
     <h3>Top 10 authors</h3>
-
-~~~js
-Plot.plot({
-  width,
-  label: null,
-  marginLeft: 0,
-  marginRight: 60,
-  x: {axis: "top", domain},
-  y: {grid: true},
-  marks: [
-    Plot.axisY({anchor: "right", textOverflow: "ellipsis-middle", lineWidth: 5}),
-    Plot.dot(commits, {x: "date", y: "author", href: (d) => \`https://github.com/${scope}/${name}/commit/$\{d.sha\}\`, target: "_blank", title: "message", tip: true, sort: {y: "x", reduce: "count", reverse: true, limit: 10}})
-  ]
-})
-~~~
-
+    <div>$\{Plot.plot({
+      width,
+      label: null,
+      marginLeft: 0,
+      marginRight: 60,
+      x: {axis: "top", domain},
+      y: {grid: true},
+      marks: [
+        Plot.axisY({anchor: "right", textOverflow: "ellipsis-middle", lineWidth: 5}),
+        Plot.dot(commits.filter((d) => d.date >= start), {x: "date", y: "author", sort: {y: "x", reduce: "count", reverse: true, limit: 10}}),
+        Plot.voronoi(commits.filter((d) => d.date >= start), {x: "date", y: "author", href: (d) => \`https://github.com/${githubRepo}/commit/$\{d.sha\}\`, target: "_blank", fill: "transparent", title: "message", tip: {maxRadius: Infinity}})
+      ]
+    })}</div>
   </div>
 </div>
 
 ---
-
-TODO
-
-- npm downloads big number ☑️
-- npm downloads chart with releases ☑️
-  - with 7-day moving average ☑️
-  - with 28-day moving average ☑️
-  - fill zeroes
-- npm downloads by version ☑️
-- github stars ☑️
-- github stars last seven days
-- days since last release ☑️
-- days since last commit ☑️
-- days since last issue or discussion activity
-- github open issues big number
-- github issue burndown chart
-- github top issues
-- github commits by author timeline chart ☑️
-- github commits calendar heatmap ☑️
-  - ~~month line~~ ☑️
-  - show date in tip ☑️
-  - tip for zero days
-- github top contributors
-- inline data rather than using FileAttachment ☑️
-- don’t show more than three years?
 
 <script type="application/json" id="data__downloads">${JSON.stringify(downloads, replacer)}</script>
 <script type="application/json" id="data__versions">${JSON.stringify(versions, replacer)}</script>

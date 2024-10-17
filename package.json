@@ -17,7 +17,8 @@
     "d3-time-format": "^4.1.0",
     "dotenv": "^16.4.5",
     "isoformat": "^0.2.1",
-    "jsdom": "^25.0.1"
+    "jsdom": "^25.0.1",
+    "markdown-it-emoji": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
