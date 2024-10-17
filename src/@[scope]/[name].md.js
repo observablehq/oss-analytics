@@ -25,7 +25,7 @@ const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64
 
 const [npmInfo, npmDownloads, npmDownloadsByVersion] = await Promise.all([
   fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`),
-  fetchNpmDownloads(npmPackage, new Date("2021-01-01"), today),
+  fetchNpmDownloads(npmPackage),
   fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`)
 ]);
 
