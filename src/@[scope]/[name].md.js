@@ -1,5 +1,5 @@
 import {parseArgs} from "node:util";
-import {sum} from "d3-array";
+import {greatest, sum} from "d3-array";
 import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchGithub, listGithub} from "../github.js";
@@ -43,6 +43,7 @@ for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: fa
   });
 }
 
+const start = greatest([new Date("2021-01-01"), utcDay(commits.at(-1).date)]);
 const issues = [];
 const pullRequests = [];
 
@@ -108,7 +109,7 @@ import semverCompare from "npm:semver/functions/compare";
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
-const start = d3.greatest([new Date("2021-01-01"), d3.utcDay(commits.at(-1).date)]);
+const start = new Date("${formatIso(start)}");
 const today = new Date("${formatIso(today)}");
 const domain = [start, today];
 
@@ -172,7 +173,7 @@ function reviver(key, value) {
   <div class="card">
     <h2>Downloads by version</h2>
     <h3>Last seven days${versions.filter((d) => d.downloads > 0).length > 10 ? "; top 10 versions" : ""}</h3>
-    <div>$\{Plot.plot({
+    $\{Plot.plot({
       width,
       label: null,
       marginLeft: 40,
@@ -194,7 +195,7 @@ function reviver(key, value) {
         }),
         Plot.ruleX([0])
       ]
-    })}</div>
+    })}
   </div>
 </div>
 
@@ -221,7 +222,7 @@ const calendarStart = d3.utcDay.offset(today, -365);
   <div class="card">
     <h2>Commits calendar</h2>
     <h3>Last 365 days</h3>
-    <div>$\{Plot.plot({
+    $\{Plot.plot({
       width,
       label: null,
       round: false,
@@ -237,15 +238,14 @@ const calendarStart = d3.utcDay.offset(today, -365);
         Plot.text(d3.utcMondays(d3.utcMonday(calendarStart), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
         Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
       ]
-    })}</div>
+    })}
   </div>
 </div>
 
 <div class="grid grid-cols-1">
   <div class="card">
-    <h2>Commits by author</h2>
-    <h3>Top 10 authors</h3>
-    <div>$\{Plot.plot({
+    <h2>Commits by author</h2>${new Set(commits.filter((d) => d.date >= start).map((d) => d.author)).size > 10 ? "\n<h3>Top 10 authors</h3>" : ""}
+    $\{Plot.plot({
       width,
       label: null,
       marginLeft: 0,
@@ -257,7 +257,7 @@ const calendarStart = d3.utcDay.offset(today, -365);
         Plot.dot(commits.filter((d) => d.date >= start), {x: "date", y: "author", sort: {y: "x", reduce: "count", reverse: true, limit: 10}}),
         Plot.voronoi(commits.filter((d) => d.date >= start), {x: "date", y: "author", href: (d) => \`https://github.com/${githubRepo}/commit/$\{d.sha\}\`, target: "_blank", fill: "transparent", title: "message", tip: {maxRadius: Infinity}})
       ]
-    })}</div>
+    })}
   </div>
 </div>
 
