@@ -5,7 +5,7 @@ import {fetchCached as fetch} from "./fetch.js";
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
+  if (!response.ok) throw new Error(`failed to fetch ${url}: ${response.status}`);
   return await response.json();
 }
 

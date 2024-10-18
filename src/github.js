@@ -17,7 +17,7 @@ export async function requestGithub(
   const url = new URL(path, "https://api.github.com");
   const headers = {...(authorization && {authorization}), accept};
   const response = await fetch(url, {headers});
-  if (!response.ok) throw new Error(`fetch error: ${response.status} ${url}`);
+  if (!response.ok) throw new Error(`failed to fetch ${url}: ${response.status}`);
   return {headers: response.headers, body: await response.json()};
 }
 
