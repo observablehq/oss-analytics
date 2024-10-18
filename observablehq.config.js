@@ -100,8 +100,8 @@ export default {
   </div>`,
   footer: ((date = new Date()) =>
     `© ${date.getUTCFullYear()} Observable, Inc. Last updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric"})}</a>.`)(),
-  dynamicPaths: packages.flatMap(({name}) => [
-    `/${name}`,
+  dynamicPaths: packages.flatMap(({name, repo}) => [
+    `/@${repo}`,
     `/${name}/downloads-dark.svg`,
     `/${name}/downloads.svg`
   ])
