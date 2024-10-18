@@ -103,6 +103,8 @@ ${githubInfo.description}
 ---
 
 ~~~js
+import semverCompare from "npm:semver/functions/compare";
+
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
@@ -169,18 +171,18 @@ function reviver(key, value) {
 <div class="grid grid-cols-1">
   <div class="card">
     <h2>Downloads by version</h2>
-    <h3>Last seven days; top 10 versions</h3>
+    <h3>Last seven days${versions.filter((d) => d.downloads > 0).length > 10 ? "; top 10 versions" : ""}</h3>
     <div>$\{Plot.plot({
       width,
       label: null,
       marginLeft: 40,
       marginRight: 60,
       x: {axis: "top", grid: true},
+      y: {domain: d3.sort(d3.sort(versions.filter((d) => d.downloads > 0), (d) => -d.downloads).slice(0, 10).map((d) => d.version), (a, b) => semverCompare(b, a))},
       marks: [
         Plot.barX(versions.filter((d) => d.downloads > 0), {
           y: "version",
-          x: "downloads",
-          sort: {y: "x", reverse: true, limit: 10}
+          x: "downloads"
         }),
         Plot.text(versions.filter((d) => d.downloads > 0), {
           y: "version",
