@@ -179,18 +179,23 @@ function reviver(key, value) {
       x: {axis: "top", grid: true},
       y: {domain: d3.sort(d3.sort(versions.filter((d) => d.downloads > 0), (d) => -d.downloads).slice(0, 10).map((d) => d.version), (a, b) => semverCompare(b, a))},
       marks: [
-        Plot.barX(versions.filter((d) => d.downloads > 0), {
+        Plot.barX(versions, {
           y: "version",
           x: "downloads"
         }),
-        Plot.text(versions.filter((d) => d.downloads > 0), {
-          y: "version",
-          x: "downloads",
-          dx: -4,
-          text: "downloads",
-          frameAnchor: "right",
-          fill: "var(--theme-background)"
-        }),
+        ((versions) => {
+          const threshold = d3.max(versions, (d) => d.downloads) * 0.15;
+          return d3.groups(versions, ({downloads}) => downloads > threshold)
+            .map(([high, versions]) => Plot.text(versions, {
+              y: "version",
+              x: "downloads",
+              dx: high ? -4 : 7,
+              text: "downloads",
+              textAnchor: high ? "end" : "start",
+              fill: high ? "var(--theme-background)" : "var(--theme-foreground-faint)"
+            })
+          );
+        })(versions),
         Plot.ruleX([0])
       ]
     })}
