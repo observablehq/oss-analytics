@@ -1,6 +1,6 @@
 import {parseArgs} from "node:util";
 import {greatest, sum} from "d3-array";
-import {utcDay} from "d3-time";
+import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchGithub, listGithub} from "../github.js";
 import {fetchNpm, fetchNpmDownloads} from "../npm.js";
@@ -13,6 +13,7 @@ const {
 
 const today = utcDay();
 const lastWeek = utcDay.offset(today, -7);
+const lastYear = utcYear.offset(today, -1);
 
 const githubRepo = `${scope}/${name}`;
 
@@ -44,6 +45,7 @@ for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: fa
 }
 
 const start = greatest([new Date("2021-01-01"), utcDay(commits.at(-1).date)]);
+
 const issues = [];
 const pullRequests = [];
 
@@ -109,6 +111,7 @@ import semverCompare from "npm:semver/functions/compare";
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
+const lastYear = new Date("${formatIso(lastYear)}");
 const start = new Date("${formatIso(start)}");
 const today = new Date("${formatIso(today)}");
 const domain = [start, today];
@@ -121,7 +124,7 @@ function reviver(key, value) {
 <div class="grid grid-cols-4">
   <a href=https://github.com/${githubRepo}/stargazers class="card">
     <div style="display: flex; flex-direction: column;">
-      <h2>GitHub stars</h2>
+      <h2>Stars</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
         <div class="big">${githubInfo.stargazers_count.toLocaleString("en-US")}</div>
         <div class="green">${recentStargazerCount.toLocaleString("en-US", {signDisplay: "always"})} in 7d</div>
@@ -206,22 +209,25 @@ function reviver(key, value) {
     <h2>Days since last commit</h2>
     <div class="big">${utcDay.count(new Date(commits[0].date), today).toLocaleString("en-US")}</div>
   </a>
+  <a href=https://github.com/${githubRepo}/commits class="card">
+    <h2>Commits</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
+      <div class="big">${commits.filter((d) => d.date >= lastYear).length.toLocaleString("en-US")}</div>
+      <div class="muted">in 12 months</div>
+    </div>
+  </a>
   <a href=https://github.com/${githubRepo}/issues class="card">
-    <h2>GitHub open issues</h2>
+    <h2>Open issues</h2>
     <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
       <div class="big">${issues.filter((d) => d.state === "open").length.toLocaleString("en-US")}</div>
     </div>
   </a>
 </div>
 
-~~~js
-const calendarStart = d3.utcDay.offset(today, -365);
-~~~
-
 <div class="grid grid-cols-1">
   <div class="card">
     <h2>Commits calendar</h2>
-    <h3>Last 365 days</h3>
+    <h3>Last 12 months</h3>
     $\{Plot.plot({
       width,
       label: null,
@@ -234,15 +240,15 @@ const calendarStart = d3.utcDay.offset(today, -365);
       y: {domain: [-1, 1, 2, 3, 4, 5, 6, 0], ticks: [1, 2, 3, 4, 5, 6, 0], tickFormat: Plot.formatWeekday()},
       color: {type: "log", label: "commits", domain: [0.2, 20], interpolate: "hcl", range: dark ? [d3.hcl(160, 40, 0), d3.hcl(140, 80, 80)] : ["white", d3.hcl(140, 70, 40)]},
       marks: [
-        Plot.cell(d3.utcDays(calendarStart, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
-        Plot.text(d3.utcMondays(d3.utcMonday(calendarStart), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
-        Plot.cell(commits.filter((d) => d.date >= calendarStart), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
+        Plot.cell(d3.utcDays(lastYear, today), {x: (d) => d3.utcMonday.count(0, d), y: (d) => d.getUTCDay(), stroke: "var(--theme-background)", r: 2, inset: 1.5}),
+        Plot.text(d3.utcMondays(d3.utcMonday(lastYear), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
+        Plot.cell(commits.filter((d) => d.date >= lastYear), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
       ]
     })}
   </div>
 </div>
 
-<div class="grid grid-cols-1">
+${commits.some((d) => d.date >= start) ? `<div class="grid grid-cols-1">
   <div class="card">
     <h2>Commits by author</h2>${new Set(commits.filter((d) => d.date >= start).map((d) => d.author)).size > 10 ? "\n<h3>Top 10 authors</h3>" : ""}
     $\{Plot.plot({
@@ -259,7 +265,7 @@ const calendarStart = d3.utcDay.offset(today, -365);
       ]
     })}
   </div>
-</div>
+</div>` : ""}
 
 ---
 
