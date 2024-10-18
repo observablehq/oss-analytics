@@ -3,9 +3,16 @@ import {dirname, join} from "node:path/posix";
 
 const cacheDir = join("src", ".observablehq", "cache", "_fetch");
 
+const faint = color(2, 22);
+
+function color(code, reset) {
+  return process.stdout.isTTY ? (text) => `\x1b[${code}m${text}\x1b[${reset}m` : String;
+}
+
 export async function fetchCached(url, options) {
   const u = new URL(url);
   if (u.protocol !== "https:") throw new Error(`unsupported protocol: ${u.protocol}`);
+  console.warn(faint("fetch"), String(u));
   let path = join(cacheDir, String(u).slice(8));
   if (!path.endsWith(".json")) path += ".json";
   await mkdir(dirname(path), {recursive: true});
