@@ -18,18 +18,25 @@ export async function requestGithub(
   let response;
   let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
-    response = await fetch(url, {...(authorization && {authorization}), accept});
-    headers = Object.fromEntries(response.headers.entries());
+    response = await fetch(url, {
+      headers: {
+        "user-agent": "observablehq/oss-analytics",
+        "x-github-api-version": "2022-11-28",
+        ...(authorization && {"authorization": authorization}),
+        "accept": accept
+      }
+    });
+    headers = response.headers;
     if (response.ok) break;
-    if (headers["x-ratelimit-remaining"] === "0") {
-      const ratelimitDelay = new Date(headers["x-ratelimit-reset"] * 1000) - Date.now();
-      console.warn(`x-ratelimit-reset ${headers["x-ratelimit-reset"]}`, ratelimitDelay);
+    if (headers.get("x-ratelimit-remaining") === "0") {
+      const ratelimitDelay = new Date(headers.get("x-ratelimit-reset") * 1000) - Date.now();
+      console.warn(`x-ratelimit-reset ${headers.get("x-ratelimit-reset")}`, ratelimitDelay);
       await new Promise((resolve) => setTimeout(resolve, ratelimitDelay));
       continue;
     }
-    if (headers["retry-after"]) {
-      const retryDelay = headers["retry-after"] * 1000;
-      console.warn(`retry-after ${headers["retry-after"]}`, retryDelay);
+    if (headers.get("retry-after")) {
+      const retryDelay = headers.get("retry-after") * 1000;
+      console.warn(`retry-after ${headers.get("retry-after")}`, retryDelay);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       continue;
     }

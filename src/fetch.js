@@ -17,21 +17,22 @@ export async function fetchCached(url, options) {
   if (!path.endsWith(".json")) path += ".json";
   await mkdir(dirname(path), {recursive: true});
   try {
-    return new Response(JSON.parse(await readFile(path, "utf-8")));
+    const {headers, body} = JSON.parse(await readFile(path, "utf-8"));
+    return new Response({headers: new Headers(headers), body});
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
     const response = await fetch(url, options);
     if (!response.ok) return response;
-    const headers = Object.fromEntries(response.headers.entries());
+    const headers = response.headers;
     const body = await response.json();
-    await writeFile(path, JSON.stringify({headers, body}), "utf-8");
+    await writeFile(path, JSON.stringify({headers: Object.fromEntries(response.headers), body}), "utf-8");
     return new Response({headers, body});
   }
 }
 
 class Response {
   constructor({headers, body}) {
-    this.headers = new Headers(headers);
+    this.headers = headers;
     this.body = body;
   }
   get ok() {
