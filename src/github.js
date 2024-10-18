@@ -3,16 +3,15 @@ import {fetchCached as fetch} from "./fetch.js";
 
 const {GITHUB_TOKEN} = process.env;
 
+if (!GITHUB_TOKEN) throw new Error("missing required GITHUB_TOKEN");
+
 export async function fetchGithub(path, options) {
   return (await requestGithub(path, options)).body;
 }
 
 export async function requestGithub(
   path,
-  {
-    authorization = GITHUB_TOKEN && `token ${GITHUB_TOKEN}`,
-    accept = "application/vnd.github.v3+json"
-  } = {}
+  {accept = "application/vnd.github.v3+json"} = {}
 ) {
   const url = new URL(path, "https://api.github.com");
   let response;
@@ -20,14 +19,15 @@ export async function requestGithub(
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
     response = await fetch(url, {
       headers: {
-        "user-agent": "observablehq/oss-analytics",
-        "x-github-api-version": "2022-11-28",
-        ...(authorization && {"authorization": authorization}),
-        "accept": accept
+        "User-Agent": "observablehq/oss-analytics",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": `token ${GITHUB_TOKEN}`,
+        "Accept": accept
       }
     });
     headers = response.headers;
     if (response.ok) break;
+    console.warn(Object.fromEntries(headers));
     if (headers.get("x-ratelimit-remaining") === "0") {
       const ratelimitDelay = new Date(headers.get("x-ratelimit-reset") * 1000) - Date.now();
       console.warn(`x-ratelimit-reset ${headers.get("x-ratelimit-reset")}`, ratelimitDelay);
