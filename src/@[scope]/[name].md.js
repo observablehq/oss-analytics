@@ -17,18 +17,13 @@ const lastYear = utcYear.offset(today, -1);
 
 const githubRepo = `${scope}/${name}`;
 
-const [githubInfo, githubPackage] = await Promise.all([
-  fetchGithub(`/repos/${encodeURI(githubRepo)}`),
-  fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`)
-]);
-
+const githubInfo = await fetchGithub(`/repos/${encodeURI(githubRepo)}`);
+const githubPackage = await fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`);
 const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
 
-const [npmInfo, npmDownloads, npmDownloadsByVersion] = await Promise.all([
-  fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`),
-  fetchNpmDownloads(npmPackage),
-  fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`)
-]);
+const npmInfo = await fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`);
+const npmDownloads = await fetchNpmDownloads(npmPackage);
+const npmDownloadsByVersion = await fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`);
 
 const downloads = npmDownloads;
 const downloadsByVersion = npmDownloadsByVersion.downloads;
