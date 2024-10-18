@@ -1,8 +1,13 @@
 import "dotenv/config";
+import {fetchCached as fetch} from "./fetch.js";
 
 const {GITHUB_TOKEN} = process.env;
 
-export async function github(
+export async function fetchGithub(path, options) {
+  return (await requestGithub(path, options)).body;
+}
+
+export async function requestGithub(
   path,
   {
     authorization = GITHUB_TOKEN && `token ${GITHUB_TOKEN}`,
@@ -16,16 +21,16 @@ export async function github(
   return {headers: response.headers, body: await response.json()};
 }
 
-export async function* githubList(path, {reverse = true, ...options} = {}) {
+export async function* listGithub(path, {reverse = true, ...options} = {}) {
   const url = new URL(path, "https://api.github.com");
   url.searchParams.set("per_page", "100");
   url.searchParams.set("page", "1");
-  const first = await github(String(url), options);
+  const first = await requestGithub(String(url), options);
   if (reverse) {
     let prevUrl = findRelLink(first.headers, "last");
     if (prevUrl) {
       do {
-        const next = await github(prevUrl, options);
+        const next = await requestGithub(prevUrl, options);
         yield* next.body.reverse(); // reverse order
         prevUrl = findRelLink(next.headers, "prev");
       } while (prevUrl);
@@ -36,7 +41,7 @@ export async function* githubList(path, {reverse = true, ...options} = {}) {
     yield* first.body;
     let nextUrl = findRelLink(first.headers, "next");
     while (nextUrl) {
-      const next = await github(nextUrl, options);
+      const next = await requestGithub(nextUrl, options);
       yield* next.body; // natural order
       nextUrl = findRelLink(next.headers, "next");
     }
