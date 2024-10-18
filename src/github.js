@@ -3,8 +3,6 @@ import {fetchCached as fetch} from "./fetch.js";
 
 const {GITHUB_TOKEN} = process.env;
 
-let ratelimitReset;
-
 export async function fetchGithub(path, options) {
   return (await requestGithub(path, options)).body;
 }
@@ -20,19 +18,18 @@ export async function requestGithub(
   let response;
   let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
-    if (ratelimitReset) {
-      console.warn(`x-ratelimit-reset ${ratelimitReset}`);
-      const ratelimitDelay = new Date(ratelimitReset * 1000) - Date.now();
-      await new Promise((resolve) => setTimeout(resolve, ratelimitDelay));
-      ratelimitDelay = null;
-    }
     response = await fetch(url, {...(authorization && {authorization}), accept});
-    headers = response.headers;
-    if (headers["x-ratelimit-remaining"] === "0") ratelimitReset = headers["x-ratelimit-reset"];
+    headers = Object.fromEntries(response.headers.entries());
     if (response.ok) break;
+    if (headers["x-ratelimit-remaining"] === "0") {
+      const ratelimitDelay = new Date(headers["x-ratelimit-reset"] * 1000) - Date.now();
+      console.warn(`x-ratelimit-reset ${headers["x-ratelimit-reset"]}`, ratelimitDelay);
+      await new Promise((resolve) => setTimeout(resolve, ratelimitDelay));
+      continue;
+    }
     if (headers["retry-after"]) {
-      console.warn(`retry-after ${retryAfter}`);
-      const retryDelay = retryAfter * 1000;
+      const retryDelay = headers["retry-after"] * 1000;
+      console.warn(`retry-after ${headers["retry-after"]}`, retryDelay);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       continue;
     }
