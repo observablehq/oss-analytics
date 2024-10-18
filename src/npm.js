@@ -1,5 +1,6 @@
 import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
+import {fetchCached as fetch} from "./fetch.js";
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");

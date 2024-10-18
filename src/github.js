@@ -1,4 +1,5 @@
 import "dotenv/config";
+import {fetchCached as fetch} from "./fetch.js";
 
 const {GITHUB_TOKEN} = process.env;
 
