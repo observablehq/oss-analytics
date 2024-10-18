@@ -17,8 +17,8 @@ export async function requestGithub(
   } = {}
 ) {
   const url = new URL(path, "https://api.github.com");
-  const headers = {...(authorization && {authorization}), accept};
   let response;
+  let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
     if (ratelimitReset) {
       console.warn(`x-ratelimit-reset ${ratelimitReset}`);
@@ -26,8 +26,8 @@ export async function requestGithub(
       await new Promise((resolve) => setTimeout(resolve, ratelimitDelay));
       ratelimitDelay = null;
     }
-    response = await fetch(url, {headers});
-    const headers = response.headers;
+    response = await fetch(url, {...(authorization && {authorization}), accept});
+    headers = response.headers;
     if (headers["x-ratelimit-remaining"] === "0") ratelimitReset = headers["x-ratelimit-reset"];
     if (response.ok) break;
     if (headers["retry-after"]) {
@@ -38,7 +38,7 @@ export async function requestGithub(
     }
     throw new Error(`failed to fetch ${url}: ${response.status}`);
   }
-  return {headers: response.headers, body: await response.json()};
+  return {headers, body: await response.json()};
 }
 
 export async function* listGithub(path, {reverse = true, ...options} = {}) {
