@@ -114,7 +114,7 @@ ${groups(packages, ({group}) => group)
       <th data-sort>name</th>
       <th class="hide-if-small" style="width: 12rem;" data-type="date" data-sort>latest release</th>
       <th style="width: 10rem;" data-type="number" data-sort="desc">stars</th>
-      <th style="width: 10rem;" data-type="number" data-sort>weekly downloads</th>
+      <th style="width: 10rem;" data-type="number" data-sort><span class="hide-if-small">weekly</span> downloads</th>
     </tr>
   </thead>
   <tbody>
