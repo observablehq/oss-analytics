@@ -21,6 +21,7 @@ export async function fetchCached(url, options) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
     const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`failed to fetch: ${response.status}`);
     const headers = Object.fromEntries(response.headers.entries());
     const body = await response.json();
     await writeFile(path, JSON.stringify({headers, body}), "utf-8");
