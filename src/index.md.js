@@ -27,6 +27,8 @@ main table {
   width: calc(100% + 2rem);
   max-width: none;
   white-space: nowrap;
+  border: solid 1px var(--theme-foreground-faintest);
+  border-radius: 8px;
 }
 
 main thead {
