@@ -1,6 +1,7 @@
 import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchCached as fetch} from "./fetch.js";
+import {today} from "./today.js";
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
@@ -9,7 +10,7 @@ export async function fetchNpm(path) {
   return await response.json();
 }
 
-export async function fetchNpmDownloads(name, start, end) {
+export async function fetchNpmDownloads(name, start = new Date("2021-01-01"), end = today) {
   const data = [];
   let batchStart = end;
   let batchEnd;

@@ -1,15 +1,13 @@
 import {groups, sort, sum} from "d3-array";
-import {utcDay, utcHour} from "d3-time";
+import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {packages} from "../observablehq.config.js";
 import {fetchGithub, fetchGithubStargazersSinceCount} from "./github.js";
 import {fetchNpm, fetchNpmDownloads} from "./npm.js";
-
-const today = utcDay(utcHour.offset(new Date(), -6));
-const lastWeek = utcDay.offset(today, -7);
+import {lastWeek, today} from "./today.js";
 
 for (const p of packages) {
-  const downloads = await fetchNpmDownloads(p.name, new Date("2021-01-01"), today);
+  const downloads = await fetchNpmDownloads(p.name);
   p.weeklyDownloads = sum(downloads.slice(0, 7), (d) => d.value);
   p.lastWeeklyDownloads = sum(downloads.slice(7, 14), (d) => d.value);
   p.stargazers = (await fetchGithub(`/repos/${encodeURI(p.repo)}`)).stargazers_count;

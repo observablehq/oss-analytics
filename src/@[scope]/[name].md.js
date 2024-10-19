@@ -1,9 +1,10 @@
 import {parseArgs} from "node:util";
 import {greatest, sum} from "d3-array";
-import {utcDay, utcHour, utcYear} from "d3-time";
+import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchGithub, fetchGithubStargazersSinceCount, listGithub} from "../github.js";
 import {fetchNpm, fetchNpmDownloads} from "../npm.js";
+import {lastWeek, lastYear, today} from "../today.js";
 
 const {
   values: {scope, name}
@@ -11,18 +12,13 @@ const {
   options: {scope: {type: "string"}, name: {type: "string"}}
 });
 
-const today = utcDay(utcHour.offset(new Date(), -6));
-const lastWeek = utcDay.offset(today, -7);
-const lastYear = utcYear.offset(today, -1);
-
 const githubRepo = `${scope}/${name}`;
-
 const githubInfo = await fetchGithub(`/repos/${encodeURI(githubRepo)}`);
 const githubPackage = await fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`);
 const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
 
 const npmInfo = await fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`);
-const npmDownloads = await fetchNpmDownloads(npmPackage, new Date("2021-01-01"), today);
+const npmDownloads = await fetchNpmDownloads(npmPackage);
 const npmDownloadsByVersion = await fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`);
 
 const downloads = npmDownloads;
