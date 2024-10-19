@@ -1,6 +1,6 @@
 import {parseArgs} from "node:util";
 import {greatest, sum} from "d3-array";
-import {utcDay} from "d3-time";
+import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchGithub, fetchGithubStargazersSinceCount, listGithub} from "../github.js";
 import {fetchNpm, fetchNpmDownloads} from "../npm.js";
@@ -35,7 +35,7 @@ for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: fa
   });
 }
 
-const start = greatest([new Date("2021-01-01"), utcDay(commits.at(-1).date)]);
+const start = greatest([utcYear.offset(today, -3), utcDay(commits.at(-1).date)]);
 const recentStargazerCount = await fetchGithubStargazersSinceCount(githubRepo, lastWeek);
 
 const issues = [];
@@ -46,10 +46,10 @@ for await (const item of listGithub(`/repos/${githubRepo}/issues?state=all`, {re
     state: item.state,
     created_at: new Date(item.created_at),
     closed_at: item.closed_at && new Date(item.closed_at),
-    draft: item.draft,
-    reactions: {...item.reactions, url: undefined},
-    title: item.title,
-    number: item.number
+    // draft: item.draft,
+    // reactions: {...item.reactions, url: undefined},
+    // title: truncate(item.title),
+    // number: item.number
   });
 }
 
@@ -95,13 +95,20 @@ import semverCompare from "npm:semver/functions/compare";
 const downloads = JSON.parse(data__downloads.textContent, reviver);
 const versions = JSON.parse(data__versions.textContent, reviver);
 const commits = JSON.parse(data__commits.textContent, reviver);
+const issues = JSON.parse(data__issues.textContent, reviver);
 const lastYear = new Date("${formatIso(lastYear)}");
 const start = new Date("${formatIso(start)}");
 const today = new Date("${formatIso(today)}");
 const domain = [start, today];
 
 function reviver(key, value) {
-  return typeof value === "string" && /(^|_)(date|time)$/.test(key) ? new Date(value) : value;
+  return typeof value === "string" && /(^|_)(date|time|at)$/.test(key) ? new Date(value) : value;
+}
+
+function idle() {
+  return new Promise(typeof window.requestIdleCallback === "function"
+    ? window.requestIdleCallback
+    : requestAnimationFrame);
 }
 ~~~
 
@@ -135,7 +142,7 @@ function reviver(key, value) {
   <div class="card">
     <h2>Daily downloads</h2>
     <h3>28d <b style="color: var(--theme-foreground);">—</b> and 7d <b style="color: var(--theme-foreground-focus);">—</b> average</h3>
-    <div style="min-height: 390px;">$\{Plot.plot({
+    <div style="min-height: 390px;">$\{resize((width) => Plot.plot({
       width,
       height: 400,
       marginLeft: 0,
@@ -152,7 +159,7 @@ function reviver(key, value) {
         Plot.ruleX(versions.filter((d) => d.date >= start), {x: "date", strokeOpacity: 0.2}),
         Plot.tip(downloads, Plot.pointerX({x: "date", y: "value"}))
       ]
-    })}</div>
+    }))}</div>
   </div>
 </div>
 
@@ -160,7 +167,7 @@ function reviver(key, value) {
   <div class="card">
     <h2>Downloads by version</h2>
     <h3>Last seven days${versions.filter((d) => d.downloads > 0).length > 10 ? "; top 10 versions" : ""}</h3>
-    $\{Plot.plot({
+    $\{resize((width) => Plot.plot({
       width,
       label: null,
       marginLeft: 40,
@@ -181,13 +188,13 @@ function reviver(key, value) {
               dx: high ? -4 : 7,
               text: "downloads",
               textAnchor: high ? "end" : "start",
-              fill: high ? "var(--theme-background)" : "var(--theme-foreground-faint)"
+              fill: high ? "var(--theme-background)" : "var(--theme-foreground-muted)"
             })
           );
         })(versions),
         Plot.ruleX([0])
       ]
-    })}
+    }))}
   </div>
 </div>
 
@@ -217,7 +224,7 @@ function reviver(key, value) {
   <div class="card">
     <h2>Commits calendar</h2>
     <h3>Last 12 months</h3>
-    $\{Plot.plot({
+    $\{resize((width) => Plot.plot({
       width,
       label: null,
       round: false,
@@ -233,14 +240,14 @@ function reviver(key, value) {
         Plot.text(d3.utcMondays(d3.utcMonday(lastYear), d3.utcMonday(today)).filter((d, i, D) => i === 0 || d.getUTCMonth() !== D[i - 1].getUTCMonth()), {x: (d) => d3.utcMonday.count(0, d), y: -1, text: d3.utcFormat("%b"), frameAnchor: "bottom-left"}),
         Plot.cell(commits.filter((d) => d.date >= lastYear), Plot.group({fill: "count"}, {x: (d) => d3.utcMonday.count(0, d.date), y: (d) => d.date.getUTCDay(), channels: {date: ([d]) => d3.utcDay(d.date)}, r: 2, tip: {format: {x: null, y: null}}, inset: 1}))
       ]
-    })}
+    }))}
   </div>
 </div>
 
 ${commits.some((d) => d.date >= start) ? `<div class="grid grid-cols-1">
   <div class="card">
     <h2>Commits by author</h2>${new Set(commits.filter((d) => d.date >= start).map((d) => d.author)).size > 10 ? "\n<h3>Top 10 authors</h3>" : ""}
-    $\{Plot.plot({
+    $\{resize((width) => Plot.plot({
       width,
       label: null,
       marginLeft: 0,
@@ -252,15 +259,53 @@ ${commits.some((d) => d.date >= start) ? `<div class="grid grid-cols-1">
         Plot.dot(commits.filter((d) => d.date >= start), {x: "date", y: "author", sort: {y: "x", reduce: "count", reverse: true, limit: 10}}),
         Plot.voronoi(commits.filter((d) => d.date >= start), {x: "date", y: "author", href: (d) => \`https://github.com/${githubRepo}/commit/$\{d.sha\}\`, target: "_blank", fill: "transparent", title: "message", tip: {maxRadius: Infinity}})
       ]
-    })}
+    }))}
   </div>
 </div>` : ""}
+
+<div class="grid grid-cols-1">
+  <div class="card">
+    <h2>Issues burndown</h2>
+    <h3>Open issues by open date</h3>
+    <div style="margin-top: 1rem;">$\{idle().then(() => resize((width) => Plot.plot({
+      width,
+      style: "margin-top: 0.5rem;",
+      x: {label: null, domain},
+      y: {label: "Open issues", insetTop: 30},
+      color: {legend: true, label: "Open date"},
+      marks: [
+        Plot.areaY(
+          issues.flatMap((i) =>
+            d3
+              .utcDays(Math.max(start, i.created_at), i.closed_at ?? d3.utcDay())
+              .map((at) => ({created_at: i.created_at, at}))
+          ),
+          Plot.binX(
+            {y: "count", filter: null},
+            {
+              x: "at",
+              fill: (d) => d3.utcWeek(d.created_at),
+              reverse: true,
+              curve: "step",
+              tip: {format: {x: null, z: null}},
+              interval: "day"
+            }
+          )
+        ),
+        Plot.textX(versions.filter((d) => d.date >= start), {x: "date", text: "version", href: (d) => \`https://github.com/${githubRepo}/releases/tag/v$\{d.version\}\`, target: "_blank", rotate: -90, frameAnchor: "top-right", lineAnchor: "bottom", dx: -4}),
+        Plot.ruleX(versions.filter((d) => d.date >= start), {x: "date", strokeOpacity: 0.2}),
+        Plot.ruleY([0])
+      ]
+    })))}</div>
+  </div>
+</div>
 
 ---
 
 <script type="application/json" id="data__downloads">${JSON.stringify(downloads, replacer)}</script>
 <script type="application/json" id="data__versions">${JSON.stringify(versions, replacer)}</script>
 <script type="application/json" id="data__commits">${JSON.stringify(commits, replacer)}</script>
+<script type="application/json" id="data__issues">${JSON.stringify(issues, replacer)}</script>
 
 <style type="text/css">
 
