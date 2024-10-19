@@ -9,6 +9,16 @@ export async function fetchGithub(path, options) {
   return (await requestGithub(path, options)).body;
 }
 
+export async function fetchGithubStargazersSinceCount(repo, since) {
+  let count = 0;
+  for await (const item of listGithub(`/repos/${repo}/stargazers`, {accept: "application/vnd.github.star+json"})) {
+    const starred_at = new Date(item.starred_at);
+    if (starred_at < since) break;
+    ++count;
+  }
+  return count;
+}
+
 export async function requestGithub(
   path,
   {accept = "application/vnd.github.v3+json"} = {}
