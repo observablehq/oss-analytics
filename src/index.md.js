@@ -104,8 +104,18 @@ main th:last-child,
 main td,
 main td:last-child {
   height: 2rem;
-  padding: 0 1rem;
+  padding: 0 0.5rem;
   vertical-align: middle;
+}
+
+main th:first-child,
+main td:first-child {
+  padding-left: 1rem;
+}
+
+main th:last-child,
+main td:last-child {
+  padding-right: 1rem;
 }
 
 </style>
@@ -118,12 +128,12 @@ ${groups(packages, ({group}) => group)
   <thead>
     <tr>
       <th data-sort>name</th>
-      <th class="hide-if-small2" style="width: 12rem;" data-type="date" data-sort>latest release</th>
-      <th class="hide-if-small2"></th>
-      <th style="width: 10rem;" data-type="number" data-sort="desc">stars</th>
-      <th class="hide-if-small"></th>
-      <th style="width: 10rem;" data-type="number" data-sort><span class="hide-if-small">weekly</span> downloads</th>
-      <th class="hide-if-small"></th>
+      <th class="hide-if-small2" style="width: 6rem;" data-type="date" data-sort>latest release</th>
+      <th style="width: 3rem;" class="hide-if-small2"></th>
+      <th style="width: 6rem;" data-type="number" data-sort="desc">stars</th>
+      <th style="width: 2rem;" class="hide-if-small"></th>
+      <th style="width: 7rem;" data-type="number" data-sort><span class="hide-if-small">weekly</span> downloads</th>
+      <th style="width: 2rem;" class="hide-if-small"></th>
     </tr>
   </thead>
   <tbody>
