@@ -101,6 +101,12 @@ h1 {
   }
 }
 
+@container not (min-width: 720px) {
+  .hide-if-small2 {
+    display: none !important;
+  }
+}
+
 @media (min-width: calc(640px + 6rem + 272px)) {
   #observablehq-sidebar-toggle:is(:checked, :indeterminate) ~ #observablehq-center .hide-if-sidebar {
     display: none !important;

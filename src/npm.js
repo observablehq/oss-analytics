@@ -1,4 +1,4 @@
-import {utcDay} from "d3-time";
+import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchCached as fetch} from "./fetch.js";
 
@@ -9,13 +9,13 @@ export async function fetchNpm(path) {
   return await response.json();
 }
 
-export async function fetchNpmDownloads(name, start = new Date("2021-01-01"), end = utcDay()) {
+export async function fetchNpmDownloads(name, start, end) {
   const data = [];
   let batchStart = end;
   let batchEnd;
   while (batchStart > start) {
     batchEnd = batchStart;
-    batchStart = utcDay.offset(batchStart, -365);
+    batchStart = utcYear(utcDay.offset(batchStart, -1)); // align on year for caching
     if (batchStart < start) batchStart = start;
     const formatStart = formatIso(batchStart);
     const formatEnd = formatIso(utcDay.offset(batchEnd, -1)); // inclusive end

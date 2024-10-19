@@ -1,8 +1,8 @@
 import {parseArgs} from "node:util";
 import {greatest, sum} from "d3-array";
-import {utcDay, utcYear} from "d3-time";
+import {utcDay, utcHour, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
-import {fetchGithub, listGithub} from "../github.js";
+import {fetchGithub, fetchGithubStargazersSinceCount, listGithub} from "../github.js";
 import {fetchNpm, fetchNpmDownloads} from "../npm.js";
 
 const {
@@ -11,7 +11,7 @@ const {
   options: {scope: {type: "string"}, name: {type: "string"}}
 });
 
-const today = utcDay();
+const today = utcDay(utcHour.offset(new Date(), -6));
 const lastWeek = utcDay.offset(today, -7);
 const lastYear = utcYear.offset(today, -1);
 
@@ -22,7 +22,7 @@ const githubPackage = await fetchGithub(`/repos/${encodeURI(githubRepo)}/content
 const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
 
 const npmInfo = await fetchNpm(`https://registry.npmjs.org/${encodeURIComponent(npmPackage)}`);
-const npmDownloads = await fetchNpmDownloads(npmPackage);
+const npmDownloads = await fetchNpmDownloads(npmPackage, new Date("2021-01-01"), today);
 const npmDownloadsByVersion = await fetchNpm(`/versions/${encodeURIComponent(npmPackage)}/last-week`);
 
 const downloads = npmDownloads;
@@ -40,6 +40,7 @@ for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: fa
 }
 
 const start = greatest([new Date("2021-01-01"), utcDay(commits.at(-1).date)]);
+const recentStargazerCount = await fetchGithubStargazersSinceCount(githubRepo, lastWeek);
 
 const issues = [];
 const pullRequests = [];
@@ -54,14 +55,6 @@ for await (const item of listGithub(`/repos/${githubRepo}/issues?state=all`, {re
     title: item.title,
     number: item.number
   });
-}
-
-let recentStargazerCount = 0;
-
-for await (const item of listGithub(`/repos/${githubRepo}/stargazers`, {accept: "application/vnd.github.star+json"})) {
-  const starred_at = new Date(item.starred_at);
-  if (starred_at < lastWeek) break;
-  ++recentStargazerCount;
 }
 
 const versions = [];

@@ -1,15 +1,19 @@
 import {groups, sort, sum} from "d3-array";
-import {utcDay} from "d3-time";
+import {utcDay, utcHour} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {packages} from "../observablehq.config.js";
-import {fetchGithub} from "./github.js";
+import {fetchGithub, fetchGithubStargazersSinceCount} from "./github.js";
 import {fetchNpm, fetchNpmDownloads} from "./npm.js";
 
-const today = utcDay();
+const today = utcDay(utcHour.offset(new Date(), -6));
+const lastWeek = utcDay.offset(today, -7);
 
 for (const p of packages) {
-  p.downloads = await fetchNpmDownloads(p.name);
+  const downloads = await fetchNpmDownloads(p.name, new Date("2021-01-01"), today);
+  p.weeklyDownloads = sum(downloads.slice(0, 7), (d) => d.value);
+  p.lastWeeklyDownloads = sum(downloads.slice(7, 14), (d) => d.value);
   p.stargazers = (await fetchGithub(`/repos/${encodeURI(p.repo)}`)).stargazers_count;
+  p.recentStargazers = await fetchGithubStargazersSinceCount(p.repo, lastWeek);
   const githubRepo = p.repo;
   const githubPackage = await fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`);
   const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
@@ -27,6 +31,7 @@ main table {
   width: calc(100% + 2rem);
   max-width: none;
   white-space: nowrap;
+  background: var(--theme-background-alt);
   border: solid 1px var(--theme-foreground-faintest);
   border-radius: 8px;
 }
@@ -40,7 +45,6 @@ main thead {
 
 main table a {
   display: inline-flex;
-  gap: 0.5rem;
   align-items: center;
   height: 100%;
 }
@@ -96,9 +100,11 @@ main td[data-type] {
 }
 
 main th,
-main td {
+main th:last-child,
+main td,
+main td:last-child {
   height: 2rem;
-  padding: 0 1rem !important;
+  padding: 0 1rem;
   vertical-align: middle;
 }
 
@@ -112,25 +118,36 @@ ${groups(packages, ({group}) => group)
   <thead>
     <tr>
       <th data-sort>name</th>
-      <th class="hide-if-small" style="width: 12rem;" data-type="date" data-sort>latest release</th>
+      <th class="hide-if-small2" style="width: 12rem;" data-type="date" data-sort>latest release</th>
+      <th class="hide-if-small2"></th>
       <th style="width: 10rem;" data-type="number" data-sort="desc">stars</th>
+      <th class="hide-if-small"></th>
       <th style="width: 10rem;" data-type="number" data-sort><span class="hide-if-small">weekly</span> downloads</th>
+      <th class="hide-if-small"></th>
     </tr>
   </thead>
   <tbody>
-    ${sort(packages, ({stargazers}) => -stargazers).map(({name, repo, stargazers, downloads, npmInfo}) => `<tr>
-      <td data-value="${repo}">
-        <a href="/@${repo}">@${repo}</a>
+    ${sort(packages, (p) => -p.stargazers).map((p) => `<tr>
+      <td data-value="${p.repo}">
+        <a href="/@${p.repo}">@${p.repo}</a>
       </td>
-      <td class="hide-if-small" data-type="date" data-value="${npmInfo.time[npmInfo["dist-tags"].latest]}" title="${utcDay.count(new Date(npmInfo.time[npmInfo["dist-tags"].latest]), today).toLocaleString("en-US")} days ago">
-        ${npmInfo["dist-tags"].latest}
-        <span class="muted">${formatIso(new Date(npmInfo.time[npmInfo["dist-tags"].latest])).slice(0, 10)}</span>
+      <td class="hide-if-small2" data-type="date" data-value="${p.npmInfo.time[p.npmInfo["dist-tags"].latest]}" title="${utcDay.count(new Date(p.npmInfo.time[p.npmInfo["dist-tags"].latest]), today).toLocaleString("en-US")} days ago">
+        ${p.npmInfo["dist-tags"].latest}
       </td>
-      <td data-type="number" data-value="${stargazers}">
-        ${stargazers.toLocaleString("en-US")} ★
+      <td class="hide-if-small2 muted" data-type="number" style="padding-left: 0; text-align: left;">
+        ${formatIso(new Date(p.npmInfo.time[p.npmInfo["dist-tags"].latest])).slice(0, 10)}
       </td>
-      <td data-type="number" data-value="${sum(downloads.slice(0, 7), (d) => d.value)}">
-        ${sum(downloads.slice(0, 7), (d) => d.value).toLocaleString("en-US")}
+      <td data-type="number" data-value="${p.stargazers}">
+        ${p.stargazers.toLocaleString("en-US")} ★
+      </td>
+      <td data-type="number" class="hide-if-small green" style="padding-left: 0; text-align: left;">
+        ${p.recentStargazers ? p.recentStargazers.toLocaleString("en-US", {signDisplay: "always"}) : "<span></span>"}
+      </td>
+      <td data-type="number" data-value="${p.weeklyDownloads}">
+        ${p.weeklyDownloads.toLocaleString("en-US")}
+      </td>
+      <td data-type="number" class="hide-if-small ${p.weeklyDownloads > p.lastWeeklyDownloads ? "green" : p.weeklyDownloads < p.lastWeeklyDownloads ? "red" : ""}" style="padding-left: 0; text-align: left;">
+        ${((p.weeklyDownloads - p.lastWeeklyDownloads) / p.lastWeeklyDownloads).toLocaleString("en-US", {style: "percent", signDisplay: "always"})}
       </td>
     </tr>`).join("\n  ")}
   </tbody>
