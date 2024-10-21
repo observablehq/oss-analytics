@@ -10,7 +10,7 @@ export async function fetchNpm(path) {
   return await response.json();
 }
 
-export async function fetchNpmDownloads(name, start = new Date("2021-01-01"), end = today) {
+export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3), end = today) {
   const data = [];
   let batchStart = end;
   let batchEnd;
