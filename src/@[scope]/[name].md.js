@@ -83,7 +83,7 @@ const weeklyDownloadsCount = sum(downloads.slice(0, 7), (d) => d.value);
 const lastWeeklyDownloadsCount = sum(downloads.slice(7, 14), (d) => d.value);
 const weeklyDownloadsChange = (weeklyDownloadsCount - lastWeeklyDownloadsCount) / lastWeeklyDownloadsCount;
 
-process.stdout.write(`# [@${githubRepo}](https://github.com/${githubRepo})
+process.stdout.write(`# [@${scope}<wbr>/${name}](https://github.com/${githubRepo})
 
 ${githubInfo.description}
 
