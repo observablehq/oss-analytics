@@ -281,12 +281,12 @@ ${commits.some((d) => d.date >= start) ? `<div class="grid grid-cols-1">
               .map((at) => ({created_at: i.created_at, at}))
           ),
           Plot.binX(
-            {y: "count", filter: null},
+            {y: "count"},
             {
               x: "at",
               fill: (d) => d3.utcWeek(d.created_at),
               reverse: true,
-              curve: "step",
+              curve: "step-before",
               tip: {format: {x: null, z: null}},
               interval: "day"
             }
