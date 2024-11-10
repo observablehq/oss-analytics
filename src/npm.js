@@ -22,13 +22,12 @@ export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3),
     const formatEnd = formatIso(utcDay.offset(batchEnd, -1)); // inclusive end
     const batch = await fetchNpm(`/downloads/range/${formatStart}:${formatEnd}/${name}`);
     for (const {downloads: value, day: date} of batch.downloads.reverse()) {
-      data.push({date: new Date(date), value});
+      data.push({date: new Date(date), value: value || undefined}); // npm sometimes erroneously reports zeroes
     }
   }
-  for (let i = data.length - 1; i >= 0; --i) {
-    if (data[i].value > 0) {
-      return data.slice(data[0].value > 0 ? 0 : 1, i + 1); // ignore npm reporting zero for today
-    }
-  }
-  throw new Error("empty dataset");
+  let i = data.length - 1;
+  let j = 0;
+  for (; i > 0 && data[i].value === undefined; --i); // trim missing data
+  for (; j < i && data[j].value === undefined; ++j); // trim missing data
+  return data.slice(j, i + 1);
 }
