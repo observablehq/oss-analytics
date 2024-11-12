@@ -1,4 +1,4 @@
-import {full as MarkdownItEmoji} from "markdown-it-emoji";
+import { full as MarkdownItEmoji } from "markdown-it-emoji";
 
 export const packages = [
   ...[
@@ -9,11 +9,11 @@ export const packages = [
     "stdlib",
     "inspector",
     "parser",
-    "htl"
+    "htl",
   ].map((name) => ({
     name: name === "htl" ? name : `@observablehq/${name}`,
     repo: `observablehq/${name}`,
-    group: "Observable"
+    group: "Observable",
   })),
   ...[
     "d3",
@@ -46,11 +46,11 @@ export const packages = [
     "d3-time-format",
     "d3-timer",
     "d3-transition",
-    "d3-zoom"
+    "d3-zoom",
   ].map((name) => ({
     name,
     repo: `d3/${name}`,
-    group: "D3 (core)"
+    group: "D3 (core)",
   })),
   ...[
     "d3-collection",
@@ -64,25 +64,27 @@ export const packages = [
     "d3-sankey",
     "d3-selection-multi",
     "d3-tile",
-    "d3-voronoi"
+    "d3-voronoi",
   ].map((name) => ({
     name,
     repo: `d3/${name}`,
-    group: "D3 (non-core)"
-  }))
+    group: "D3 (non-core)",
+  })),
 ];
 
 export default {
-  title: "Open-source analytics",
+  title: "Open-source analytics — Toph test",
   head: '<link rel="icon" href="observable.png" type="image/png" sizes="32x32">',
   root: "src",
   style: "style.css",
   markdownIt: (md) => md.use(MarkdownItEmoji),
   globalStylesheets: [
-    "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap",
   ],
   toc: false,
-  header: ({path}) => `<div style="display: flex; flex-grow: 1; align-items: center; justify-content: space-between; white-space: nowrap;">
+  header: ({
+    path,
+  }) => `<div style="display: flex; flex-grow: 1; align-items: center; justify-content: space-between; white-space: nowrap;">
     <div>
       <a href="/" class="hide-if-sidebar" style="display: flex; align-items: center; gap: 0.5rem;">
         <svg width="22" height="22" viewBox="0 0 21.92930030822754 22.68549919128418" fill="currentColor" style="align-self: center;">
@@ -99,10 +101,10 @@ export default {
     </span>
   </div>`,
   footer: ((date = new Date()) =>
-    `© ${date.getUTCFullYear()} Observable, Inc. Last updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", {month: "short", day: "numeric"})}</a>.`)(),
-  dynamicPaths: packages.flatMap(({name, repo}) => [
+    `© ${date.getUTCFullYear()} Observable, Inc. Last updated <a title="${date.toISOString()}">${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</a>.`)(),
+  dynamicPaths: packages.flatMap(({ name, repo }) => [
     `/@${repo}`,
     `/${name}/downloads-dark.svg`,
-    `/${name}/downloads.svg`
-  ])
+    `/${name}/downloads.svg`,
+  ]),
 };
