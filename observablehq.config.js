@@ -2,6 +2,7 @@ import {full as MarkdownItEmoji} from "markdown-it-emoji";
 
 export const packages = [
   ...[
+    "notebook-kit",
     "framework",
     "plot",
     "inputs",
