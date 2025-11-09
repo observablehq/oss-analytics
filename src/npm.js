@@ -5,8 +5,21 @@ import {today} from "./today.js";
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`failed to fetch ${url}: ${response.status}`);
+  let response;
+  let headers;
+  for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
+    response = await fetch(url);
+    headers = response.headers;
+    if (response.ok) break;
+    console.warn(Object.fromEntries(headers));
+    if (headers.get("retry-after")) {
+      const retryDelay = headers.get("retry-after") * 1000;
+      console.warn(`retry-after ${headers.get("retry-after")}`, retryDelay);
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      continue;
+    }
+    throw new Error(`failed to fetch ${url}: ${response.status}`);
+  }
   return await response.json();
 }
 
