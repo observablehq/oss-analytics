@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
+          cache: yarn
       - run: yarn --frozen-lockfile
       - run: yarn build
       - uses: actions/configure-pages@v4
