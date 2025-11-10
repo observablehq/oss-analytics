@@ -8,7 +8,7 @@ export async function fetchNpm(path) {
   let response;
   let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
-    response = await fetch(url);
+    response = await fetch(url, {headers: {"User-Agent": "observablehq/oss-analytics"}});
     headers = response.headers;
     if (response.ok) break;
     console.warn(Object.fromEntries(headers));
