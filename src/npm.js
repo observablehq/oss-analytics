@@ -1,13 +1,17 @@
 import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {fetchCached as fetch} from "./fetch.js";
+import {RateLimiter} from "./rate.js";
 import {today} from "./today.js";
+
+const rateLimit = RateLimiter(30, 60_000); // 30 requests per 60 seconds
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
   let response;
   let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
+    await rateLimit();
     response = await fetch(url, {headers: {"User-Agent": "observablehq/oss-analytics"}});
     headers = response.headers;
     if (response.ok) break;
