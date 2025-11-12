@@ -20,7 +20,7 @@ for (const p of packages) {
 
 process.stdout.write(`# Open-source analytics
 
-This dashboard shows [Observable’s open-source projects](https://github.com/observablehq) and [D3](https://github.com/d3). This dashboard is itself [open-source](https://github.com/observablehq/oss-analytics/) and built with [Observable Framework](https://observablehq.com/framework/) and updated daily on [Observable Cloud](https://observablehq.com/platform/cloud); fork it to visualize your own projects!
+This dashboard shows [Observable’s open-source projects](https://github.com/observablehq) and [D3](https://github.com/d3). This dashboard is itself [open-source](https://github.com/observablehq/oss-analytics/) and built with [Observable Framework](https://observablehq.com/framework/) and [updated daily](https://github.com/observablehq/oss-analytics/actions/workflows/deploy.yml); fork it to visualize your own projects!
 
 <style type="text/css">
 
