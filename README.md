@@ -16,5 +16,5 @@ This project collects [npm download counts](https://github.com/npm/registry/blob
 This project is [open-source](https://github.com/observablehq/oss-analytics/); you can use it to build embeddable charts of your own packages.
 
 1. [Fork this repository.](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
-2. Edit [`observablehq.config.js`](https://github.com/observablehq/oss-analytics/blob/main/observablehq.config.js) to list your npm packages, comitting your changes.
+2. Edit [`observablehq.config.js`](https://github.com/observablehq/oss-analytics/blob/main/observablehq.config.js) to list your npm packages, committing your changes.
 3. Tweak [`index.md.js`](https://github.com/observablehq/oss-analytics/blob/main/src/index.md.js) to personalize the page.
