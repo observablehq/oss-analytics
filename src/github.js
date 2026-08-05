@@ -9,6 +9,7 @@ export async function fetchGithub(path, options) {
   return (await requestGithub(path, options)).body;
 }
 
+// Broken since https://github.blog/changelog/2026-06-30-upcoming-access-restrictions-to-public-api-endpoints-and-ui-views/
 export async function fetchGithubStargazersSinceCount(repo, since) {
   let count = 0;
   for await (const item of listGithub(`/repos/${repo}/stargazers`, {accept: "application/vnd.github.star+json"})) {
@@ -38,6 +39,7 @@ export async function requestGithub(
     headers = response.headers;
     if (response.ok) break;
     console.warn(Object.fromEntries(headers));
+    console.warn(await response.text());
     if (headers.get("x-ratelimit-remaining") === "0") {
       const ratelimitDelay = new Date(headers.get("x-ratelimit-reset") * 1000) - Date.now();
       console.warn(`x-ratelimit-reset ${headers.get("x-ratelimit-reset")}`, ratelimitDelay);

@@ -36,7 +36,10 @@ for await (const item of listGithub(`/repos/${githubRepo}/commits`, {reverse: fa
 }
 
 const start = greatest([utcYear.offset(today, -3), utcDay(commits.at(-1).date)]);
-const recentStargazerCount = await fetchGithubStargazersSinceCount(githubRepo, lastWeek);
+
+// Broken since https://github.blog/changelog/2026-06-30-upcoming-access-restrictions-to-public-api-endpoints-and-ui-views/
+// const recentStargazerCount = await fetchGithubStargazersSinceCount(githubRepo, lastWeek);
+// <div class="green">${recentStargazerCount.toLocaleString("en-US", {signDisplay: "always"})} in 7d</div>
 
 const issues = [];
 const pullRequests = [];
@@ -118,7 +121,6 @@ function idle() {
       <h2>Stars</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;">
         <div class="big">${githubInfo.stargazers_count.toLocaleString("en-US")}</div>
-        <div class="green">${recentStargazerCount.toLocaleString("en-US", {signDisplay: "always"})} in 7d</div>
       </div>
     </div>
   </a>
