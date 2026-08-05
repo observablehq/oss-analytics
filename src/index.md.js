@@ -2,16 +2,17 @@ import {groups, sort, sum} from "d3-array";
 import {utcDay} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {packages} from "../observablehq.config.js";
-import {fetchGithub, fetchGithubStargazersSinceCount} from "./github.js";
+import {fetchGithub} from "./github.js";
 import {fetchNpm, fetchNpmDownloads} from "./npm.js";
-import {lastWeek, today} from "./today.js";
+import {today} from "./today.js";
 
 for (const p of packages) {
   const downloads = await fetchNpmDownloads(p.name);
   p.weeklyDownloads = sum(downloads.slice(0, 7), (d) => d.value);
   p.lastWeeklyDownloads = sum(downloads.slice(7, 14), (d) => d.value);
   p.stargazers = (await fetchGithub(`/repos/${encodeURI(p.repo)}`)).stargazers_count;
-  p.recentStargazers = await fetchGithubStargazersSinceCount(p.repo, lastWeek);
+  // Broken since https://github.blog/changelog/2026-06-30-upcoming-access-restrictions-to-public-api-endpoints-and-ui-views/
+  // p.recentStargazers = await fetchGithubStargazersSinceCount(p.repo, lastWeek);
   const githubRepo = p.repo;
   const githubPackage = await fetchGithub(`/repos/${encodeURI(githubRepo)}/contents/package.json`);
   const {name: npmPackage} = JSON.parse(Buffer.from(githubPackage.content, "base64").toString("utf-8"));
@@ -129,7 +130,6 @@ ${groups(packages, ({group}) => group)
       <th class="hide-if-small2" style="width: 6rem;" data-type="date" data-sort>latest release</th>
       <th style="width: 3rem;" class="hide-if-small2"></th>
       <th style="width: 6rem;" data-type="number" data-sort="desc">stars</th>
-      <th style="width: 2rem;" class="hide-if-small"></th>
       <th style="width: 7rem;" data-type="number" data-sort><span class="hide-if-small">weekly</span> downloads</th>
       <th style="width: 2rem;" class="hide-if-small"></th>
     </tr>
@@ -147,9 +147,6 @@ ${groups(packages, ({group}) => group)
       </td>
       <td data-type="number" data-value="${p.stargazers}">
         ${p.stargazers.toLocaleString("en-US")} ★
-      </td>
-      <td data-type="number" class="hide-if-small green" style="padding-left: 0; text-align: left;">
-        ${p.recentStargazers ? p.recentStargazers.toLocaleString("en-US", {signDisplay: "always"}) : "<span></span>"}
       </td>
       <td data-type="number" data-value="${p.weeklyDownloads}">
         ${p.weeklyDownloads.toLocaleString("en-US")}
