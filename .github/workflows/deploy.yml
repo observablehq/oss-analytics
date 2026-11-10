@@ -22,17 +22,9 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn --frozen-lockfile
-      # Downloads for completed years never change, so keep them between runs.
-      - uses: actions/cache@v4
-        with:
-          path: src/.observablehq/cache/_fetch/api.npmjs.org/downloads/range
-          key: npm-downloads-${{ github.run_id }}
-          restore-keys: npm-downloads-
       - run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Don’t keep partial downloads for the current year (start:end, e.g. 2026-01-01:2026-11-09).
-      - run: find src/.observablehq/cache/_fetch/api.npmjs.org/downloads/range -mindepth 1 -maxdepth 1 -name "*:$(date -u +%Y)-*" -exec rm -rf {} +
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:

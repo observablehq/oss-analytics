@@ -1,3 +1,5 @@
+import {mkdir, readFile, writeFile} from "node:fs/promises";
+import {dirname, join} from "node:path/posix";
 import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
 import {packages} from "../observablehq.config.js";
@@ -6,22 +8,20 @@ import {today} from "./today.js";
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
-  let response;
-  let headers;
-  for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
-    response = await fetch(url, {headers: {"User-Agent": "observablehq/oss-analytics"}});
-    headers = response.headers;
-    if (response.ok) break;
-    console.warn(Object.fromEntries(headers));
-    if (headers.get("retry-after") > 0) {
-      const retryDelay = headers.get("retry-after") * 1000;
-      console.warn(`retry-after ${headers.get("retry-after")}`, retryDelay);
+  for (let attempt = 1, maxAttempts = 5; ; ++attempt) {
+    const response = await fetch(url, {headers: {"User-Agent": "observablehq/oss-analytics"}});
+    if (response.ok) return await response.json();
+    // npm answers 429 (with retry-after: 0) once its rate limit is exhausted;
+    // back off long enough for it to refill rather than failing outright.
+    if (response.status === 429 && attempt < maxAttempts) {
+      const retryDelay = Math.max(response.headers.get("retry-after") * 1000, 60_000 * attempt);
+      console.warn(`429 rate limited; retrying in ${retryDelay}ms (attempt ${attempt} of ${maxAttempts})`);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       continue;
     }
+    console.warn(Object.fromEntries(response.headers));
     throw new Error(`failed to fetch ${url}: ${response.status}`);
   }
-  return await response.json();
 }
 
 // Unscoped packages are fetched in bulk (scoped packages aren’t supported by
@@ -32,8 +32,26 @@ const bulkChunks = Array.from({length: Math.ceil(bulkNames.length / bulkMax)}, (
 
 async function fetchNpmDownloadsRange(name, period) {
   const chunk = bulkChunks.find((chunk) => chunk.includes(name));
-  if (!chunk) return (await fetchNpm(`/downloads/range/${period}/${name}`)).downloads;
-  return (await fetchNpm(`/downloads/range/${period}/${chunk.join(",")}`))[name]?.downloads ?? [];
+  if (!chunk) return await fetchNpm(`/downloads/range/${period}/${name}`);
+  return (await fetchNpm(`/downloads/range/${period}/${chunk.join(",")}`))[name] ?? {downloads: []};
+}
+
+// Downloads for completed years never change, so they’re committed to the
+// repo; a missing year is fetched and written here, and should be committed.
+const archiveDir = join("data", "npm-downloads");
+
+async function fetchNpmDownloadsYear(name, year) {
+  const path = join(archiveDir, String(year), `${name}.json`);
+  try {
+    return JSON.parse(await readFile(path, "utf-8"));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    const data = await fetchNpmDownloadsRange(name, `${year}-01-01:${year}-12-31`);
+    await mkdir(dirname(path), {recursive: true});
+    await writeFile(path, JSON.stringify(data), "utf-8");
+    console.warn(`wrote ${path}; please commit it`);
+    return data;
+  }
 }
 
 export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3), end = today) {
@@ -45,7 +63,10 @@ export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3),
     batchStart = utcYear(utcDay.offset(batchStart, -1)); // align on year for caching
     const formatStart = formatIso(batchStart);
     const formatEnd = formatIso(utcDay.offset(batchEnd, -1)); // inclusive end
-    const batch = await fetchNpmDownloadsRange(name, `${formatStart}:${formatEnd}`);
+    const {downloads: batch} =
+      +utcYear.offset(batchStart, 1) === +batchEnd // a completed year
+        ? await fetchNpmDownloadsYear(name, batchStart.getUTCFullYear())
+        : await fetchNpmDownloadsRange(name, `${formatStart}:${formatEnd}`);
     for (const {downloads: value, day: date} of batch.slice().reverse()) {
       if (new Date(date) < start) continue; // the earliest batch is a whole year
       data.push({date: new Date(date), value: value || undefined}); // npm sometimes erroneously reports zeroes
