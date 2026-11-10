@@ -22,10 +22,11 @@ export async function fetchCached(url, options) {
     return new Response({headers: new Headers(headers), body});
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
-    // npm (Cloudflare) serves a challenge page after a short burst of requests,
-    // so space out every uncached request. Each data loader runs in its own
-    // process, so this waits before every request rather than limiting a rate.
-    if (u.hostname.endsWith(".npmjs.org")) await new Promise((resolve) => setTimeout(resolve, 2000));
+    // npm rate-limits with what looks like a token bucket (~16 requests of
+    // burst, refilling ~1 request per 6s), so pace every uncached request at
+    // the refill rate. Each data loader runs in its own process, so this waits
+    // before every request rather than limiting a rate.
+    if (u.hostname.endsWith(".npmjs.org")) await new Promise((resolve) => setTimeout(resolve, 6000));
     const response = await fetch(url, options);
     if (!response.ok) return response;
     const headers = response.headers;
