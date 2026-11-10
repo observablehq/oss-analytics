@@ -1,22 +1,19 @@
 import {utcDay, utcYear} from "d3-time";
 import {format as formatIso} from "isoformat";
+import {packages} from "../observablehq.config.js";
 import {fetchCached as fetch} from "./fetch.js";
-import {RateLimiter} from "./rate.js";
 import {today} from "./today.js";
-
-const rateLimit = RateLimiter(30, 60_000); // 30 requests per 60 seconds
 
 export async function fetchNpm(path) {
   const url = new URL(path, "https://api.npmjs.org");
   let response;
   let headers;
   for (let attempt = 0, maxAttempts = 3; attempt < maxAttempts; ++attempt) {
-    await rateLimit();
     response = await fetch(url, {headers: {"User-Agent": "observablehq/oss-analytics"}});
     headers = response.headers;
     if (response.ok) break;
     console.warn(Object.fromEntries(headers));
-    if (headers.get("retry-after")) {
+    if (headers.get("retry-after") > 0) {
       const retryDelay = headers.get("retry-after") * 1000;
       console.warn(`retry-after ${headers.get("retry-after")}`, retryDelay);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
@@ -27,6 +24,18 @@ export async function fetchNpm(path) {
   return await response.json();
 }
 
+// Unscoped packages are fetched in bulk (scoped packages aren’t supported by
+// the bulk API); every loader uses the same list so they share a cached URL.
+const bulkMax = 128;
+const bulkNames = Array.from(new Set(packages.map((p) => p.name).filter((name) => !name.startsWith("@")))).sort();
+const bulkChunks = Array.from({length: Math.ceil(bulkNames.length / bulkMax)}, (_, i) => bulkNames.slice(i * bulkMax, (i + 1) * bulkMax)); // prettier-ignore
+
+async function fetchNpmDownloadsRange(name, period) {
+  const chunk = bulkChunks.find((chunk) => chunk.includes(name));
+  if (!chunk) return (await fetchNpm(`/downloads/range/${period}/${name}`)).downloads;
+  return (await fetchNpm(`/downloads/range/${period}/${chunk.join(",")}`))[name]?.downloads ?? [];
+}
+
 export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3), end = today) {
   const data = [];
   let batchStart = end;
@@ -34,11 +43,11 @@ export async function fetchNpmDownloads(name, start = utcYear.offset(today, -3),
   while (batchStart > start) {
     batchEnd = batchStart;
     batchStart = utcYear(utcDay.offset(batchStart, -1)); // align on year for caching
-    if (batchStart < start) batchStart = start;
     const formatStart = formatIso(batchStart);
     const formatEnd = formatIso(utcDay.offset(batchEnd, -1)); // inclusive end
-    const batch = await fetchNpm(`/downloads/range/${formatStart}:${formatEnd}/${name}`);
-    for (const {downloads: value, day: date} of batch.downloads.reverse()) {
+    const batch = await fetchNpmDownloadsRange(name, `${formatStart}:${formatEnd}`);
+    for (const {downloads: value, day: date} of batch.slice().reverse()) {
+      if (new Date(date) < start) continue; // the earliest batch is a whole year
       data.push({date: new Date(date), value: value || undefined}); // npm sometimes erroneously reports zeroes
     }
   }
