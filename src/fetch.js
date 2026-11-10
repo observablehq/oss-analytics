@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import {mkdir, readFile, writeFile} from "node:fs/promises";
 import {dirname, join} from "node:path/posix";
 
@@ -13,7 +14,7 @@ export async function fetchCached(url, options) {
   const u = new URL(url);
   if (u.protocol !== "https:") throw new Error(`unsupported protocol: ${u.protocol}`);
   console.warn(faint("fetch"), String(u));
-  let path = join(cacheDir, String(u).slice(8));
+  let path = join(cacheDir, ...String(u).slice(8).split("/").map(shortenSegment));
   if (!path.endsWith(".json")) path += ".json";
   await mkdir(dirname(path), {recursive: true});
   try {
@@ -21,6 +22,10 @@ export async function fetchCached(url, options) {
     return new Response({headers: new Headers(headers), body});
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+    // npm (Cloudflare) serves a challenge page after a short burst of requests,
+    // so space out every uncached request. Each data loader runs in its own
+    // process, so this waits before every request rather than limiting a rate.
+    if (u.hostname.endsWith(".npmjs.org")) await new Promise((resolve) => setTimeout(resolve, 2000));
     const response = await fetch(url, options);
     if (!response.ok) return response;
     const headers = response.headers;
@@ -28,6 +33,12 @@ export async function fetchCached(url, options) {
     await writeFile(path, JSON.stringify({headers: Object.fromEntries(response.headers), body}), "utf-8");
     return new Response({headers, body});
   }
+}
+
+// File names are limited to 255 bytes, so hash long path segments (such as
+// the comma-separated package names of a bulk npm downloads request).
+function shortenSegment(segment) {
+  return segment.length <= 200 ? segment : createHash("sha256").update(segment).digest("hex");
 }
 
 class Response {
